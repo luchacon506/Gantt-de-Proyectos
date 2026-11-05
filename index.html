@@ -1,1 +1,2883 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador Gantt de Proyectos</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+  :root{
+    --aya-azul: #1B294E;
+    --aya-dorado: #C9AD6E;
+    --aya-fondo-claro: #F5F6FA;
+    --aya-blanco: #FFFFFF;
+    --aya-gris: #E0E3EB;
+    --aya-texto: #1a1a1a;
+    --aya-peligro: #c0392b;
+    --aya-exito: #27ae60;
+    --aya-warn: #f39c12;
 
+    --aya-azul-medio: #3A4A70;
+    --aya-dorado-oscuro: #8B7338;
+    --aya-dorado-hover: #B89958;
+    --aya-gris-texto: #5B678A;
+    --aya-gris-suave: #94A0BD;
+    --aya-borde: rgba(27,41,78,.14);
+    --aya-borde-fuerte: rgba(27,41,78,.24);
+    --aya-tinte-dorado: rgba(201,173,110,.18);
+
+    --name-w: 320px;
+    --row-h: 38px;
+  }
+  @media (max-width: 720px){ :root{ --name-w: 200px; } }
+
+  *{ box-sizing: border-box; }
+  html, body { height: 100%; }
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    background: var(--aya-fondo-claro);
+    color: var(--aya-texto);
+    font-size:14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .header{
+    background: var(--aya-azul);
+    color:#fff;
+    padding:10px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:3px solid var(--aya-dorado);
+    flex-shrink: 0;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .header-left{ display:flex; align-items:center; gap:14px; }
+  .logo{ height:44px; width:auto; object-fit:contain; }
+  .h-main{ font-size:15px; font-weight:700; }
+  .h-sub{ font-size:11px; opacity:.85; margin-top:1px; }
+  .h-platform{
+    font-size:18px;
+    font-weight:700;
+    color: var(--aya-dorado);
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+  }
+
+  .fixed-panels{
+    flex-shrink: 0;
+    background: var(--aya-fondo-claro);
+    padding: 6px 18px 4px;
+    border-bottom: 1px solid var(--aya-borde);
+    max-height: 66vh;
+    overflow-y: auto;
+    transition: max-height .2s ease;
+  }
+  .fixed-panels.collapsed{ max-height: 34px; overflow: hidden; }
+  .fixed-panels.collapsed .fixed-panels-content{ display: none; }
+  .fixed-panels-bar{
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 2px 0 4px;
+    gap: 10px;
+  }
+  .fp-title{
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--aya-gris-texto);
+    display: flex; align-items: center; gap: 6px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fp-title strong{ color: var(--aya-azul); }
+  .btn-toggle-panels{
+    background: var(--aya-blanco);
+    border: 1px solid var(--aya-borde-fuerte);
+    border-radius: 6px; cursor: pointer;
+    padding: 3px 10px; font-size: 11px; font-weight: 700;
+    color: var(--aya-azul);
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: inherit;
+  }
+  .btn-toggle-panels:hover{ background: var(--aya-fondo-claro); border-color: var(--aya-azul); }
+
+  .panel{
+    background: var(--aya-blanco);
+    border:1px solid var(--aya-borde);
+    border-radius:8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 2px rgba(27,41,78,.04);
+  }
+  .panel:last-child{ margin-bottom: 0; }
+
+  .template-panel .template-head{
+    display:flex; justify-content:space-between; align-items:center;
+    cursor:pointer; user-select:none;
+  }
+  .template-head h3{ margin:0; font-size:12px; color: var(--aya-azul); font-weight:700; }
+  .template-head .chv{ transition:transform .2s; font-size:10px; color: var(--aya-gris-texto); }
+  .template-panel.collapsed .template-body{ display:none; }
+  .template-panel.collapsed .chv{ transform:rotate(-90deg); }
+  .template-body{ margin-top:8px; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; }
+  .tmpl-fase{
+    border:1px solid var(--aya-borde);
+    border-radius:8px;
+    padding:8px 10px;
+    background: var(--aya-fondo-claro);
+  }
+  .tmpl-fase > label{ display:flex; gap:6px; align-items:center; font-weight:700; cursor:pointer; color: var(--aya-azul); font-size:12px; }
+  .tmpl-fase .stages{ margin:6px 0 0 20px; display:flex; flex-direction:column; gap:3px; }
+  .tmpl-fase .stages label{ font-weight:400; font-size:11px; color: var(--aya-gris-texto); cursor:pointer; }
+  input[type=checkbox]{ accent-color: var(--aya-azul); width:14px; height:14px; }
+
+  form.task-form{ display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; }
+  .form-title-row{
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 3px; border-bottom: 2px solid var(--aya-dorado);
+    margin-bottom: 2px;
+    gap: 8px;
+  }
+  .form-title-row h3{
+    margin:0; padding:0; border:none;
+    font-size: 11px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--aya-azul);
+  }
+  .edit-hint{
+    display:none; align-items:center; gap:8px;
+    background: var(--aya-tinte-dorado);
+    border:1px solid var(--aya-dorado);
+    border-radius:6px;
+    padding: 3px 8px; font-size: 11px; color: var(--aya-azul);
+    flex-wrap: wrap;
+  }
+  .edit-hint strong{ font-weight:700; }
+  .edit-hint .btn{ padding: 2px 8px; font-size: 10px; }
+
+  .form-row{
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end;
+  }
+  .field{ display: flex; flex-direction: column; gap: 1px; }
+  .field label{
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .4px; color: var(--aya-gris-texto);
+  }
+  input, select, button{ font: inherit; }
+  input[type=text], input[type=date], input[type=number], select{
+    border:1px solid var(--aya-borde-fuerte);
+    border-radius:6px; padding: 4px 8px;
+    background: var(--aya-blanco); color: var(--aya-azul);
+    font-size: 12px;
+  }
+  input:focus, select:focus{
+    outline:2px solid rgba(201,173,110,.45);
+    outline-offset:1px;
+    border-color: var(--aya-dorado);
+  }
+  input[disabled], select[disabled]{ background: var(--aya-fondo-claro); color: var(--aya-gris-suave); cursor:not-allowed; }
+
+  input[readonly],
+  .project-name-wrap.locked input[type=text]{
+    background: #d9e1ef !important;
+    color: #2f3d5e !important;
+    cursor: not-allowed !important;
+    border-color: var(--aya-borde-fuerte) !important;
+    box-shadow: inset 0 1px 2px rgba(27,41,78,.12) !important;
+  }
+  .project-name-wrap.locked::after{
+    content: '🔒';
+    font-size: 11px;
+    color: var(--aya-azul);
+    flex-shrink: 0;
+    margin-left: 2px;
+    line-height: 1;
+  }
+
+  input[type=color]{
+    width: 38px; height: 26px; padding: 1px;
+    border:1px solid var(--aya-borde-fuerte);
+    border-radius:6px; background: var(--aya-blanco); cursor:pointer;
+  }
+  .chk-label{ display:flex; gap:5px; align-items:center; font-weight:600; cursor:pointer; font-size: 11px; color: var(--aya-azul); padding-top: 6px; }
+
+  .project-name-wrap{
+    display: flex; gap: 4px; align-items: center; width: 100%;
+  }
+  .project-name-wrap input{ flex: 1; min-width: 0; }
+
+  .btn-edit-proj-group{
+    display: none;
+    align-items: center; justify-content: center;
+    width: 32px; height: 26px;
+    border: 1px solid var(--aya-borde-fuerte);
+    background: var(--aya-blanco);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--aya-azul);
+    font-family: inherit;
+    padding: 0;
+    flex-shrink: 0;
+    transition: .15s;
+    align-self: flex-end;
+    margin-bottom: 1px;
+  }
+  .btn-edit-proj-group.visible{ display: inline-flex; }
+  .btn-edit-proj-group:hover{
+    background: var(--aya-dorado);
+    color: #fff;
+    border-color: var(--aya-dorado-oscuro);
+  }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    border:1px solid var(--aya-borde-fuerte);
+    background: var(--aya-blanco);
+    border-radius:6px; padding: 4px 10px; cursor:pointer;
+    font-weight:600; color: var(--aya-azul);
+    transition:.15s; white-space:nowrap; font-size: 11px;
+  }
+  .btn:hover{ background: var(--aya-fondo-claro); border-color: var(--aya-azul); }
+  .btn:active{ transform:translateY(1px); }
+  .btn.primary{ background: var(--aya-azul); border-color: var(--aya-azul); color: var(--aya-blanco); }
+  .btn.primary:hover{ background: var(--aya-azul-medio); border-color: var(--aya-azul-medio); }
+  .btn.danger:hover{ background:#fee2e2; border-color:#fca5a5; color:#b91c1c; }
+  .btn.xls{ background: var(--aya-dorado); border-color: var(--aya-dorado); color: var(--aya-azul); }
+  .btn.xls:hover{ background: var(--aya-dorado-hover); border-color: var(--aya-dorado-hover); }
+
+  .metrics-row{
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: 4px 10px;
+  }
+  .metric{
+    display: inline-flex; align-items: baseline; gap: 6px;
+    padding: 2px 10px;
+    background: var(--aya-fondo-claro);
+    border-left: 3px solid var(--aya-dorado);
+    border-radius: 6px;
+    font-size: 11px;
+  }
+  .metric-label{
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .4px; color: var(--aya-gris-texto);
+  }
+  .metric-value{
+    font-size: 13px; font-weight: 800; color: var(--aya-azul);
+    line-height: 1;
+  }
+  .metric-sub{ font-size: 9px; color: var(--aya-gris-texto); font-weight: 600; margin-left: 2px; }
+  .metric.spi-ok{ border-left-color:#27ae60; }
+  .metric.spi-ok .metric-value{ color:#27ae60; }
+  .metric.spi-warn{ border-left-color:#f39c12; }
+  .metric.spi-warn .metric-value{ color:#f39c12; }
+  .metric.spi-bad{ border-left-color:#e74c3c; }
+  .metric.spi-bad .metric-value{ color:#e74c3c; }
+
+  .toolbar-row{
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    justify-content: space-between;
+    padding: 4px 10px;
+  }
+  .grp{ display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .zoom-label{
+    font-size: 10px; color: var(--aya-gris-texto); font-weight: 700;
+    min-width: 110px; text-align: center;
+    background: var(--aya-fondo-claro); border-radius: 6px; padding: 3px 6px;
+  }
+
+  .gantt-area{
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    padding: 6px 18px 6px;
+    overflow: hidden;
+  }
+  .gantt-wrap{
+    background: var(--aya-blanco);
+    border:1px solid var(--aya-borde);
+    border-radius:8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(27,41,78,.05);
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+  }
+  .gantt-scroll{ height: 100%; overflow: auto; position: relative; }
+  .gantt{ position: relative; min-width: 100%; }
+
+  .ghead{
+    display:flex; position:sticky; top:0; z-index:5;
+    background: var(--aya-azul);
+    border-bottom:1px solid var(--aya-borde);
+  }
+  .gcorner{
+    position:sticky; left:0; z-index:6;
+    width:var(--name-w); flex:0 0 var(--name-w); height:52px;
+    background: var(--aya-azul);
+    color: var(--aya-blanco);
+    border-right:1px solid rgba(255,255,255,.15);
+    display:flex; align-items:flex-end; padding:0 10px 8px;
+    font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  }
+  .hwrap{ position:relative; }
+  .hmonths, .hdays{ display:flex; }
+  .hmonth{
+    height:24px; line-height:24px; padding-left:6px;
+    font-size:10px; font-weight:700;
+    color: var(--aya-blanco);
+    background: var(--aya-azul);
+    border-right:1px solid rgba(255,255,255,.15);
+    white-space:nowrap; overflow:hidden;
+  }
+  .hdays{ height:28px; border-top:1px solid rgba(255,255,255,.1); background: var(--aya-fondo-claro); }
+  .hday{
+    flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    font-size:10px; color: var(--aya-azul);
+    border-right:1px solid var(--aya-borde); overflow:hidden;
+    background: var(--aya-blanco);
+    white-space:nowrap; padding:0 2px;
+  }
+  .hday.we{ background: rgba(27,41,78,.08); color: var(--aya-gris-texto); }
+  .hday.today{ background: rgba(201,173,110,.4); color: var(--aya-azul); font-weight:800; }
+  .hday.holiday{ background: rgba(201,173,110,.3); color: var(--aya-dorado-oscuro); font-weight:700; }
+
+  .gbody{ position:relative; }
+
+  .bg-layer{
+    position:absolute; top:0; bottom:0;
+    left: var(--name-w); right: 0;
+    z-index: 0; pointer-events: none; overflow: hidden;
+  }
+  .bg-grid{
+    position:absolute; top:0; bottom:0;
+    background-image: repeating-linear-gradient(
+      to right, rgba(27,41,78,.15) 0 1px, transparent 1px var(--dw)
+    );
+  }
+  .bg-weekend{ position:absolute; top:0; bottom:0; background: rgba(27,41,78,.055); }
+  .bg-holiday{ position:absolute; top:0; bottom:0; background: rgba(201,173,110,.22); }
+
+  .grow{
+    display:flex; height:var(--row-h);
+    border-bottom:1px solid var(--aya-borde);
+    user-select:none;
+    position:relative; z-index:1;
+  }
+  .grow:hover .gname{ background: var(--aya-fondo-claro); }
+  .grow.lvl0 { background: rgba(27,41,78,.04); }
+  .grow.lvl0 .gname{ background: #eef2f8; }
+  .grow.lvl0 .gname-title{ font-weight:900; font-size:13px; color: var(--aya-azul); }
+  .grow.lvl0 .gname-dates{ font-size:9px; }
+  .grow.lvl1 .gname-title{ font-weight:800; font-size:13px; color: var(--aya-azul); }
+  .grow.lvl2 .gname-title{ font-weight:700; font-size:12.5px; color: var(--aya-azul); }
+  .grow.lvl3 .gname-title{ font-weight:600; font-size:12.5px; color: var(--aya-azul); }
+  .grow.lvl4 .gname-title{ font-weight:400; font-size:12.5px; color: var(--aya-azul-medio); }
+
+  .grow.milestone .gname-title::before{
+    content:'HITO ';
+    display:inline-block;
+    font-size:9px; font-weight:800; letter-spacing:.5px;
+    color: var(--aya-azul); background: var(--aya-dorado);
+    border-radius:4px; padding:1px 5px; margin-right:6px; vertical-align:1px;
+  }
+
+  .grow.draft{ opacity: .75; }
+  .grow.draft .gname-title{ font-style: italic; color: var(--aya-gris-texto); }
+  .grow.draft .gbar{ opacity: .55; }
+
+  .grow.dragging{ opacity:.35; }
+  .grow.drop-before{ box-shadow: inset 0 3px 0 var(--aya-dorado); }
+  .grow.drop-after{ box-shadow: inset 0 -3px 0 var(--aya-dorado); }
+  .grow.drop-into{ background: var(--aya-tinte-dorado); box-shadow: inset 0 0 0 2px var(--aya-dorado); }
+  .grow.drop-into .gname{ background: var(--aya-tinte-dorado); }
+  .grow.editing .gname{ background: var(--aya-tinte-dorado); box-shadow: inset 3px 0 0 var(--aya-dorado); }
+
+  .gname{
+    position:sticky; left:0; z-index:2;
+    width:var(--name-w); flex:0 0 var(--name-w);
+    background: var(--aya-blanco);
+    border-right:1px solid var(--aya-borde);
+    display:flex; align-items:center; gap:3px;
+    padding:0 4px 0 6px; overflow:hidden; cursor:grab;
+  }
+  .grow.lvl0 .gname{ cursor:default; }
+
+  .edt-code{
+    font-family: 'Courier New', monospace;
+    font-size: 9.5px;
+    font-weight: 800;
+    color: var(--aya-dorado-oscuro);
+    background: var(--aya-tinte-dorado);
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-right: 4px;
+    flex-shrink: 0;
+    min-width: 30px;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .grow.lvl0 .edt-code{ background: var(--aya-azul); color: var(--aya-dorado); }
+  .grow.lvl1 .edt-code{ background: rgba(27,41,78,.16); color: var(--aya-azul); }
+
+  .gname-txt{ display:flex; flex-direction:column; min-width:0; flex:1; }
+  .gname-title{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+  .gname-dates{ font-size:10px; color: var(--aya-gris-texto); }
+  .gname-dates .w-badge{
+    display:inline-block;
+    background: var(--aya-dorado); color: var(--aya-azul);
+    font-size:9px; font-weight:800;
+    padding:0 5px; border-radius:6px; margin-left:4px;
+    letter-spacing:.2px;
+  }
+  .indent{ flex:0 0 auto; }
+
+  .gname-bpip-line{
+    font-size: 7.5px;
+    font-weight: 800;
+    color: var(--aya-dorado-oscuro);
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .toggle-btn{
+    flex:0 0 auto; width:16px; height:16px; padding:0;
+    border:1px solid var(--aya-borde-fuerte);
+    background: var(--aya-blanco);
+    border-radius:3px; cursor:pointer;
+    font-size:8px; font-weight:800;
+    color: var(--aya-azul);
+    display:inline-flex; align-items:center; justify-content:center;
+    transition:.15s; font-family:inherit;
+    margin-right:3px;
+  }
+  .toggle-btn:hover{ background: var(--aya-dorado); border-color: var(--aya-dorado-oscuro); }
+  .toggle-spacer{ flex:0 0 19px; }
+
+  .qa-group{ display:none; gap:2px; align-items:center; }
+  .grow:hover .qa-group{ display:flex; }
+  .qa{
+    width:20px; height:20px; padding:0;
+    border:1px solid var(--aya-borde-fuerte);
+    background: var(--aya-blanco);
+    border-radius:3px; cursor:pointer;
+    font-size:9px; font-weight:800;
+    color: var(--aya-azul);
+    display:inline-flex; align-items:center; justify-content:center;
+    transition:.15s; font-family:inherit;
+  }
+  .qa:hover{ background: var(--aya-dorado); border-color: var(--aya-dorado-oscuro); color: var(--aya-azul); }
+
+  .del{
+    border:0; background:transparent; color: var(--aya-gris-suave);
+    font-size:15px; line-height:1; cursor:pointer;
+    padding:2px 4px; border-radius:5px; opacity:0; transition:.15s;
+  }
+  .grow:hover .del{ opacity:1; }
+  .del:hover{ background:#fee2e2; color:#ef4444; }
+
+  .gtrack{ position:relative; flex:0 0 auto; }
+
+  .gbar{
+    position:absolute; top:9px; height:20px; border-radius:5px;
+    box-shadow: 0 1px 3px rgba(27,41,78,.2);
+    cursor:pointer;
+  }
+  .gbar:hover{ filter:brightness(1.06); }
+  .gbar.milestone{
+    border-radius:4px;
+    background: var(--aya-dorado) !important;
+    box-shadow: 0 2px 6px rgba(201,173,110,.55), inset 0 0 0 1px var(--aya-dorado-oscuro);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .gbar.milestone::after{
+    content:'HITO';
+    font-size:8.5px; font-weight:800; letter-spacing:.4px;
+    color: var(--aya-azul); white-space:nowrap;
+  }
+  .gbar.project-bar{
+    top: 13px;
+    height: 12px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--aya-azul) 0%, var(--aya-azul) 55%, rgba(27,41,78,.4) 55%, rgba(27,41,78,.4) 100%);
+    box-shadow: 0 1px 3px rgba(27,41,78,.35);
+    cursor: default;
+  }
+  .gbar.project-bar::before, .gbar.project-bar::after{
+    content:'';
+    position:absolute;
+    top: -2px; bottom: -2px;
+    width: 4px;
+    background: var(--aya-azul);
+    border-radius: 2px;
+  }
+  .gbar.project-bar::before{ left: -2px; }
+  .gbar.project-bar::after{ right: -2px; }
+
+  .todayline{
+    position:absolute; top:0; bottom:0; width:2px;
+    background: var(--aya-dorado); opacity:.8; z-index:3; pointer-events:none;
+  }
+  .todayline::before{
+    content:''; position:absolute; top:0; left:-4px;
+    width:9px; height:9px; border-radius:50%;
+    background: var(--aya-dorado);
+    box-shadow: 0 0 0 2px rgba(201,173,110,.25);
+  }
+
+  #depSvg{ position:absolute; top:0; left:0; pointer-events:none; z-index:4; overflow:visible; }
+
+  .empty{ padding:60px 20px; text-align:center; color: var(--aya-gris-texto); line-height:1.7; }
+
+  .footer{
+    background: var(--aya-azul);
+    color: var(--aya-gris-suave);
+    text-align: center;
+    padding: 8px 24px;
+    font-size: 11px;
+    border-top: 2px solid var(--aya-dorado);
+    flex-shrink: 0;
+    letter-spacing: .3px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="https://www.aya.go.cr/assets/img/96cb7f83-6325-4ee1-8e4e-fa1e21262be8.png" alt="AYA" class="logo">
+    <div>
+      <div class="h-main">UEN Programación y Control</div>
+      <div class="h-sub">Instituto Costarricense de Acueductos y Alcantarillados</div>
+    </div>
+  </div>
+  <div class="h-platform">Generador Gantt de Proyectos</div>
+</header>
+
+<div class="fixed-panels" id="fixedPanels">
+  <div class="fixed-panels-bar">
+    <div class="fp-title">Panel de control · <strong id="fpProjectLabel">Proyecto</strong></div>
+    <button class="btn-toggle-panels" id="togglePanelsBtn" type="button">▼ Ocultar paneles</button>
+  </div>
+
+  <div class="fixed-panels-content" id="fixedPanelsContent">
+
+    <div class="panel template-panel collapsed" id="templatePanel">
+      <div class="template-head" id="templateHead">
+        <h3>Estructura Base</h3>
+        <span class="chv">▼</span>
+      </div>
+      <div class="template-body" id="templateBody"></div>
+    </div>
+
+    <form id="taskForm" class="panel task-form">
+      <div class="form-title-row">
+        <h3>Datos de línea</h3>
+        <div class="edit-hint" id="editHint">
+          <span id="editContext"></span>
+          <button type="button" class="btn" id="btnCancelEdit">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field" style="width:120px; flex-shrink:0">
+          <label for="projBpip">Código BPIP</label>
+          <div class="project-name-wrap" id="projBpipWrap">
+            <input id="projBpip" type="text" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="off"
+              style="text-align:center; font-family:'Courier New',monospace; font-weight:700; letter-spacing:1.5px; min-width:0">
+          </div>
+        </div>
+        <div class="field" style="flex:1.4 1 200px; min-width:180px">
+          <label for="projName">Nombre del Proyecto (EDT 1)</label>
+          <div class="project-name-wrap" id="projNameWrap">
+            <input id="projName" type="text" placeholder="Ej. Construcción de tanque de almacenamiento">
+          </div>
+        </div>
+        <button type="button" class="btn-edit-proj-group" id="btnEditProjectInfo" title="Editar BPIP y nombre del proyecto">✎</button>
+        <div class="field" style="flex:1 1 180px; min-width:160px">
+          <label for="tName">Nombre de Línea</label>
+          <input id="tName" type="text" placeholder="Ej. Diseño de planos constructivos" required>
+        </div>
+        <div class="field" style="width:90px; flex-shrink:0">
+          <label for="tLevel">Nivel</label>
+          <select id="tLevel">
+            <option value="1">Fase</option>
+            <option value="2">Etapa</option>
+            <option value="3">Paquete</option>
+            <option value="4" selected>Actividad</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1 1 140px; min-width:130px">
+          <label for="tParent">Padre</label>
+          <select id="tParent"><option value="">— Ninguno —</option></select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field" style="min-width:130px">
+          <label for="tStart">Inicio</label>
+          <input id="tStart" type="date">
+        </div>
+        <div class="field" style="width:92px; flex-shrink:0">
+          <label for="tDays">Días Hábiles</label>
+          <input id="tDays" type="number" min="1" step="1" value="5">
+        </div>
+        <div class="field" style="min-width:130px">
+          <label for="tEnd">Fin</label>
+          <input id="tEnd" type="date">
+        </div>
+        <div class="field" style="flex-shrink:0">
+          <label>Hito</label>
+          <label class="chk-label"><input type="checkbox" id="tMilestone"> Es hito</label>
+        </div>
+        <div class="field" style="width:80px; flex-shrink:0">
+          <label for="tProg">Progreso %</label>
+          <input id="tProg" type="number" min="0" max="100" step="5" value="0">
+        </div>
+        <div class="field" style="flex-shrink:0">
+          <label for="tColor">Color</label>
+          <input id="tColor" type="color" value="#1B294E">
+        </div>
+        <div class="field" style="flex:1 1 180px; min-width:170px">
+          <label for="tPred">Predecesora</label>
+          <select id="tPred" style="min-width:170px">
+            <option value="">— Ninguna —</option>
+          </select>
+        </div>
+        <button class="btn primary" id="btnSubmit" type="submit" style="margin-left:auto">+ Añadir</button>
+      </div>
+    </form>
+
+    <div class="panel metrics-row" id="metricsPanel">
+      <div class="metric" id="metric-progress">
+        <span class="metric-label">Avance Global</span>
+        <span class="metric-value" id="metricProgress">0.0%</span>
+      </div>
+      <div class="metric" id="metric-spi">
+        <span class="metric-label">SPI</span>
+        <span class="metric-value" id="metricSPI">N/D</span>
+        <span class="metric-sub" id="metricSPISub"></span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Peso Total</span>
+        <span class="metric-value" id="metricWeight">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Etapas Activas</span>
+        <span class="metric-value" id="metricEtapas">0</span>
+      </div>
+    </div>
+
+    <div class="panel toolbar-row">
+      <div class="grp">
+        <button class="btn" id="btnTimelineBack" type="button" title="Retroceder en el tiempo">◀</button>
+        <button class="btn" id="btnTimelineForward" type="button" title="Avanzar en el tiempo">▶</button>
+        <button class="btn" id="zoomOut" type="button" title="Alejar (años / trimestres)">−</button>
+        <span class="zoom-label" id="zoomLabel"></span>
+        <button class="btn" id="zoomIn" type="button" title="Acercar (meses / semanas / días)">+</button>
+        <button class="btn" id="btnToday" type="button">Hoy</button>
+      </div>
+      <div class="grp">
+        <button class="btn xls" id="btnExportXls" type="button">Exportar XLSX</button>
+        <label class="btn" for="importFile" title="Importar JSON o XLSX">Importar</label>
+        <input id="importFile" type="file" accept=".json,.xlsx,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+        <button class="btn danger" id="btnClear" type="button">Vaciar</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="gantt-area">
+  <div class="gantt-wrap">
+    <div class="gantt-scroll" id="scroll">
+      <div class="gantt" id="gantt"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  Plataforma interna · Gantt de Proyectos · UEN Programación y Control · AyA
+</footer>
+
+<script>
+/* ==================== Utilidades ==================== */
+const DAY = 86400000;
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+const parseDate = iso => { const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); };
+const fmtDate   = d  => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const addDays   = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const diffDays  = (a, b) => Math.round((b - a) / DAY);
+const shortDate = iso => iso.slice(8,10) + '/' + iso.slice(5,7);
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+  : 'id' + Date.now() + Math.random().toString(36).slice(2, 8);
+
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const LEVEL_NAMES = { 0:'Proyecto', 1:'Fase', 2:'Etapa', 3:'Paquete', 4:'Actividad' };
+const LEVEL_COLORS = { 1:'#1B294E', 2:'#3A4A70', 3:'#C9AD6E', 4:'#8B7338' };
+const AYA = { azul:'#1B294E', dorado:'#C9AD6E', blanco:'#FFFFFF', fondo:'#F5F6FA' };
+
+function hexToRgba(hex, a){
+  let h = String(hex || '#000000').replace('#','');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const r = parseInt(h.slice(0,2),16) || 0;
+  const g = parseInt(h.slice(2,4),16) || 0;
+  const b = parseInt(h.slice(4,6),16) || 0;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ==================== Feriados Costa Rica ==================== */
+function getEasterSunday(year){
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+function buildHolidaySet(){
+  const set = new Set();
+  for (let y = 2000; y <= 2055; y++){
+    set.add(`${y}-01-01`); set.add(`${y}-05-01`); set.add(`${y}-08-02`);
+    set.add(`${y}-08-15`); set.add(`${y}-09-15`); set.add(`${y}-12-01`); set.add(`${y}-12-25`);
+    [[4,11],[7,25],[10,12]].forEach(([m,day]) => {
+      const d = new Date(y, m-1, day);
+      const dow = d.getDay();
+      const obs = new Date(d);
+      if (dow === 2 || dow === 3 || dow === 4) obs.setDate(d.getDate() - (dow - 1));
+      else if (dow === 5) obs.setDate(d.getDate() + 3);
+      else if (dow === 6) obs.setDate(d.getDate() + 2);
+      else if (dow === 0) obs.setDate(d.getDate() + 1);
+      set.add(fmtDate(obs));
+    });
+    const easter = getEasterSunday(y);
+    const thu = new Date(easter); thu.setDate(easter.getDate() - 3);
+    const fri = new Date(easter); fri.setDate(easter.getDate() - 2);
+    set.add(fmtDate(thu)); set.add(fmtDate(fri));
+  }
+  return set;
+}
+const HOLIDAY_SET = buildHolidaySet();
+function isNonWorkDay(d){
+  const iso = fmtDate(d);
+  if (HOLIDAY_SET.has(iso)) return 'holiday';
+  const dow = d.getDay();
+  if (dow === 0 || dow === 6) return 'weekend';
+  return null;
+}
+function isWorkDay(d){ return !isNonWorkDay(d); }
+function getEndDateFromWorkDays(startDate, n){
+  if (n <= 0) return new Date(startDate);
+  let d = new Date(startDate), count = 0;
+  while (count < n){
+    if (isWorkDay(d)) count++;
+    if (count < n) d = addDays(d, 1);
+  }
+  return d;
+}
+function countWorkDaysBetween(startDate, endDate){
+  if (endDate < startDate) return 0;
+  let count = 0, d = new Date(startDate);
+  while (d <= endDate){
+    if (isWorkDay(d)) count++;
+    d = addDays(d, 1);
+  }
+  return count;
+}
+function nextWorkDay(fromDate){
+  let d = addDays(fromDate, 1);
+  while (!isWorkDay(d)) d = addDays(d, 1);
+  return d;
+}
+
+/* ==================== Pesos MIDEPLAN ==================== */
+function getWeightForEtapa(name){
+  if (!name) return 1;
+  const n = name.toLowerCase();
+  if (n.includes('prefactibilidad') || n.includes('pre-factibilidad')) return 2;
+  if (n.includes('pre ejecución') || n.includes('pre-ejecución') || n.includes('preejecución') || n.includes('preejecucion') || n.includes('pre ejecucion')) return 5;
+  if (n.includes('pre operación') || n.includes('pre-operación') || n.includes('preoperación') || n.includes('preoperacion')) return 0;
+  if (n.includes('idea')) return 0;
+  if (n.includes('perfil')) return 1;
+  if (n.includes('factibilidad')) return 4;
+  if (n.includes('diseño') || n.includes('diseno')) return 5;
+  if (n.includes('financiamiento')) return 3;
+  if (n.includes('licitación') || n.includes('licitacion')) return 5;
+  if (n.includes('ejecución') || n.includes('ejecucion')) return 75;
+  if (n.includes('operación') || n.includes('operacion')) return 0;
+  return 1;
+}
+
+/* ==================== Progreso y SPI ==================== */
+function buildProgressCache(){
+  const cache = new Map();
+  const children = new Map();
+  state.tasks.forEach(t => {
+    const p = t.parentId || '';
+    if (!children.has(p)) children.set(p, []);
+    children.get(p).push(t);
+  });
+  function getProgress(taskId){
+    if (cache.has(taskId)) return cache.get(taskId);
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return 0;
+    let result;
+    const kids = children.get(taskId) || [];
+    if (kids.length === 0){
+      result = task.progress;
+    } else if (task.level === 1){
+      let tw = 0, w = 0;
+      for (const c of kids){
+        const cw = getWeightForEtapa(c.name);
+        tw += cw;
+        w += cw * getProgress(c.id);
+      }
+      result = tw > 0 ? w / tw : 0;
+    } else {
+      let td = 0, w = 0;
+      for (const c of kids){
+        const d = Math.max(1, countWorkDaysBetween(parseDate(c.start), parseDate(c.end)) || 1);
+        td += d;
+        w += d * getProgress(c.id);
+      }
+      result = td > 0 ? w / td : 0;
+    }
+    cache.set(taskId, result);
+    return result;
+  }
+  return getProgress;
+}
+function calcOverallProgress(){
+  const etapas = state.tasks.filter(t => t.level === 2);
+  if (etapas.length === 0) return 0;
+  const getProgress = buildProgressCache();
+  let tw = 0, w = 0;
+  for (const et of etapas){
+    const cw = getWeightForEtapa(et.name);
+    tw += cw;
+    w += cw * getProgress(et.id);
+  }
+  return tw > 0 ? w / tw : 0;
+}
+function calcSPI(){
+  const etapas = state.tasks.filter(t => t.level === 2);
+  if (etapas.length === 0) return null;
+  const getProgress = buildProgressCache();
+  const today = new Date(); today.setHours(0,0,0,0);
+  let ev = 0, pv = 0, hasWeight = false;
+  for (const et of etapas){
+    const w = getWeightForEtapa(et.name);
+    if (w <= 0) continue;
+    hasWeight = true;
+    ev += w * (getProgress(et.id) / 100);
+    let planned = 0;
+    if (et.start && et.end){
+      const s = parseDate(et.start), e = parseDate(et.end);
+      if (today >= e) planned = 1;
+      else if (today > s) planned = (today - s) / (e - s);
+    }
+    pv += w * planned;
+  }
+  if (!hasWeight || pv === 0) return null;
+  return ev / pv;
+}
+function spiLabel(spi){
+  if (spi === null) return 'Sin datos suficientes';
+  if (spi >= 0.9) return 'En tiempo';
+  if (spi >= 0.7) return 'Atrasado';
+  return 'Crítico';
+}
+
+/* ==================== Zoom ==================== */
+const ZOOM_LEVELS = [
+  { dayW: 2,  top: 'year',    bottom: 'quarter', label: 'Años / Trimestres' },
+  { dayW: 4,  top: 'year',    bottom: 'quarter', label: 'Años / Trimestres' },
+  { dayW: 6,  top: 'year',    bottom: 'month',   label: 'Años / Meses' },
+  { dayW: 10, top: 'year',    bottom: 'month',   label: 'Años / Meses' },
+  { dayW: 14, top: 'year',    bottom: 'month',   label: 'Años / Meses' },
+  { dayW: 20, top: 'month',   bottom: 'week',    label: 'Meses / Semanas' },
+  { dayW: 26, top: 'month',   bottom: 'day',     label: 'Meses / Días' },
+  { dayW: 36, top: 'month',   bottom: 'day',     label: 'Meses / Días' },
+  { dayW: 48, top: 'month',   bottom: 'day',     label: 'Meses / Días' },
+  { dayW: 60, top: 'month',   bottom: 'day',     label: 'Meses / Días' }
+];
+function buildHeaderCells(start, totalDays, dw, mode){
+  const cells = [];
+  if (mode === 'year'){
+    let i = 0;
+    while (i < totalDays){
+      const y = addDays(start, i).getFullYear();
+      let c = 0;
+      while (i + c < totalDays && addDays(start, i + c).getFullYear() === y) c++;
+      cells.push({ text: String(y), width: c * dw }); i += c;
+    }
+  } else if (mode === 'quarter'){
+    let i = 0;
+    while (i < totalDays){
+      const d = addDays(start, i);
+      const q = Math.floor(d.getMonth() / 3) + 1, y = d.getFullYear();
+      let c = 0;
+      while (i + c < totalDays){
+        const dd = addDays(start, i + c);
+        if (Math.floor(dd.getMonth() / 3) + 1 !== q || dd.getFullYear() !== y) break;
+        c++;
+      }
+      cells.push({ text: `Q${q} ${y}`, width: c * dw }); i += c;
+    }
+  } else if (mode === 'month'){
+    let i = 0;
+    while (i < totalDays){
+      const d = addDays(start, i);
+      const m = d.getMonth(), y = d.getFullYear();
+      let c = 0;
+      while (i + c < totalDays){
+        const dd = addDays(start, i + c);
+        if (dd.getMonth() !== m || dd.getFullYear() !== y) break;
+        c++;
+      }
+      cells.push({ text: `${MESES[m]} ${y}`, width: c * dw }); i += c;
+    }
+  } else if (mode === 'week'){
+    let i = 0, w = 1;
+    while (i < totalDays){
+      const d = addDays(start, i);
+      const c = Math.min(7, totalDays - i);
+      cells.push({ text: `S${w} · ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`, width: c * dw });
+      i += c; w++;
+    }
+  } else if (mode === 'day'){
+    const todayISO = fmtDate(new Date());
+    for (let i = 0; i < totalDays; i++){
+      const d = addDays(start, i), iso = fmtDate(d), dow = d.getDay();
+      cells.push({
+        text: String(d.getDate()), width: dw,
+        isWeekend: dow === 0 || dow === 6,
+        isToday: iso === todayISO,
+        isHoliday: HOLIDAY_SET.has(iso)
+      });
+    }
+  }
+  return cells;
+}
+
+/* ==================== Estructura Base ==================== */
+const MIDEPLAN_TEMPLATE = [
+  { id:'tmpl-f-pre',  name:'Fase de Preinversión', level:1, parentId:'' },
+  { id:'tmpl-e-idea',    name:'Idea',                level:2, parentId:'tmpl-f-pre' },
+  { id:'tmpl-e-perfil',  name:'Perfil',              level:2, parentId:'tmpl-f-pre' },
+  { id:'tmpl-e-prefact', name:'Prefactibilidad',     level:2, parentId:'tmpl-f-pre' },
+  { id:'tmpl-e-fact',    name:'Factibilidad',        level:2, parentId:'tmpl-f-pre' },
+  { id:'tmpl-f-inv',  name:'Fase de Inversión', level:1, parentId:'' },
+  { id:'tmpl-e-diseno', name:'Diseño final y especificaciones o documento equivalente', level:2, parentId:'tmpl-f-inv' },
+  { id:'tmpl-e-financ', name:'Financiamiento',            level:2, parentId:'tmpl-f-inv' },
+  { id:'tmpl-e-licit',  name:'Licitación y adjudicación', level:2, parentId:'tmpl-f-inv' },
+  { id:'tmpl-e-preejec',name:'Pre ejecución',             level:2, parentId:'tmpl-f-inv' },
+  { id:'tmpl-e-ejec',   name:'Ejecución física y financiera', level:2, parentId:'tmpl-f-inv' },
+  { id:'tmpl-f-post', name:'Fase de Post Inversión', level:1, parentId:'' },
+  { id:'tmpl-e-preoper', name:'Pre operación', level:2, parentId:'tmpl-f-post' },
+  { id:'tmpl-e-oper',    name:'Operación',     level:2, parentId:'tmpl-f-post' }
+];
+const TMPL_BY_ID = new Map(MIDEPLAN_TEMPLATE.map(n => [n.id, n]));
+const FASE_IDS = MIDEPLAN_TEMPLATE.filter(n => n.level === 1).map(n => n.id);
+
+/* ==================== Estado ==================== */
+const KEY = 'gantt-mideplan-v16';
+const state = {
+  tasks: [],
+  projectName: '',
+  projectBpip: '',
+  projectInfoLocked: false,
+  zoomLevel: 6,
+  editingId: null,
+  addingToId: null,
+  draftId: null,
+  collapsed: new Set(),
+  panelsCollapsed: false
+};
+let firstRender = true;
+
+function normalize(t){
+  const start = t.start && /^\d{4}-\d{2}-\d{2}$/.test(t.start) ? t.start : fmtDate(new Date());
+  let end = t.end && /^\d{4}-\d{2}-\d{2}$/.test(t.end) ? t.end : start;
+  if (end < start) end = start;
+  const isMilestone = !!t.isMilestone;
+  if (isMilestone) end = start;
+  return {
+    id: t.id || uid(),
+    name: String(t.name || 'Sin nombre'),
+    level: clamp(Number(t.level) || 4, 1, 4),
+    parentId: t.parentId || '',
+    start, end,
+    progress: clamp(Number(t.progress) || 0, 0, 100),
+    color: /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color : (LEVEL_COLORS[Number(t.level) || 4] || AYA.azul),
+    predecessors: Array.isArray(t.predecessors) ? t.predecessors.filter(id => id !== t.id) : [],
+    isMilestone,
+    isDraft: !!t.isDraft,
+    order: Number.isFinite(t.order) ? t.order : undefined
+  };
+}
+const validTask = t => t && typeof t.name === 'string'
+  && /^\d{4}-\d{2}-\d{2}$/.test(t.start || '')
+  && /^\d{4}-\d{2}-\d{2}$/.test(t.end || '');
+
+function save(){
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state.tasks));
+    localStorage.setItem(KEY + '_projectName', state.projectName);
+    localStorage.setItem(KEY + '_projectBpip', state.projectBpip);
+  } catch(e){}
+}
+function load(){
+  try {
+    state.projectName = localStorage.getItem(KEY + '_projectName') || '';
+    state.projectBpip = localStorage.getItem(KEY + '_projectBpip') || '';
+    const raw = localStorage.getItem(KEY);
+    if (raw){
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.filter(validTask).map(normalize);
+    }
+  } catch(e){}
+  return null;
+}
+
+function ensureOrders(tasks){
+  const groups = new Map();
+  tasks.forEach(t => {
+    const p = t.parentId || '';
+    if (!groups.has(p)) groups.set(p, []);
+    groups.get(p).push(t);
+  });
+  groups.forEach(list => {
+    if (list.every(t => Number.isFinite(t.order))) list.sort((a,b) => a.order - b.order);
+    list.forEach((t, i) => { t.order = i; });
+  });
+}
+
+/* ==================== Árbol ==================== */
+function buildTree(tasks){
+  const byId = new Map(tasks.map(t => [t.id, t]));
+  const children = new Map();
+  tasks.forEach(t => {
+    const p = t.parentId && byId.has(t.parentId) ? t.parentId : '';
+    if (!children.has(p)) children.set(p, []);
+    children.get(p).push(t);
+  });
+  children.forEach(l => l.sort((a,b) => (a.order ?? 0) - (b.order ?? 0)));
+  return { byId, children };
+}
+function computeEDTMap(tree){
+  const map = new Map();
+  function assign(children, parentCode){
+    children.forEach((child, i) => {
+      const code = `${parentCode}.${i+1}`;
+      map.set(child.id, code);
+      const kids = tree.children.get(child.id) || [];
+      if (kids.length > 0) assign(kids, code);
+    });
+  }
+  assign(tree.children.get('') || [], '1');
+  return map;
+}
+function flattenVisible(tree, collapsed, parentId = '', depth = 0, acc = []){
+  const list = tree.children.get(parentId) || [];
+  for (const t of list){
+    acc.push({ task: t, depth });
+    if (!collapsed.has(t.id)) flattenVisible(tree, collapsed, t.id, depth + 1, acc);
+  }
+  return acc;
+}
+function computeRollupDates(tasks){
+  const byId = new Map(tasks.map(t => [t.id, t]));
+  const children = new Map();
+  tasks.forEach(t => {
+    const p = t.parentId && byId.has(t.parentId) ? t.parentId : '';
+    if (!children.has(p)) children.set(p, []);
+    children.get(p).push(t);
+  });
+  function rollup(id){
+    const t = byId.get(id);
+    if (t && t.isMilestone) return;
+    const kids = children.get(id) || [];
+    if (!kids.length) return;
+    kids.forEach(k => rollup(k.id));
+    const dates = kids.flatMap(k => [k.start, k.end]).filter(Boolean);
+    if (dates.length){
+      const min = dates.reduce((a,b) => a < b ? a : b);
+      const max = dates.reduce((a,b) => a > b ? a : b);
+      const node = byId.get(id);
+      if (node){ node.start = min; node.end = max; }
+    }
+  }
+  tasks.filter(t => !t.parentId || !byId.has(t.parentId)).forEach(r => rollup(r.id));
+  return tasks;
+}
+function getDescendantIds(id){
+  const ids = [];
+  const queue = [id];
+  while (queue.length){
+    const cur = queue.shift();
+    state.tasks.forEach(t => {
+      if (t.parentId === cur){ ids.push(t.id); queue.push(t.id); }
+    });
+  }
+  return ids;
+}
+function getAncestorIds(id){
+  const ancestors = new Set();
+  let cur = state.tasks.find(t => t.id === id);
+  while (cur && cur.parentId){
+    ancestors.add(cur.parentId);
+    cur = state.tasks.find(t => t.id === cur.parentId);
+  }
+  return ancestors;
+}
+function getChildLevels(task){
+  if (!task || task.isMilestone) return [];
+  if (task.level === 1) return [2];
+  if (task.level === 2) return [3];
+  if (task.level === 3) return [4];
+  if (task.level === 4) return [4];
+  return [];
+}
+function childButtonLabel(level){
+  if (level === 1) return '+F';
+  if (level === 2) return '+E';
+  if (level === 3) return '+P';
+  if (level === 4) return '+A';
+  return '+';
+}
+function childButtonTitle(level){ return 'Añadir ' + LEVEL_NAMES[level].toLowerCase() + ' dentro de este elemento'; }
+
+/* ==================== Estructura Base ==================== */
+function renderTemplate(){
+  const body = $('templateBody');
+  body.innerHTML = '';
+  MIDEPLAN_TEMPLATE.filter(n => n.level === 1).forEach(fase => {
+    const box = document.createElement('div');
+    box.className = 'tmpl-fase';
+    const etapas = MIDEPLAN_TEMPLATE.filter(n => n.parentId === fase.id);
+    const faseActive = state.tasks.some(t => t.id === fase.id);
+    const someEtapasActive = etapas.some(e => state.tasks.some(t => t.id === e.id));
+    const faseLabel = document.createElement('label');
+    const faseChk = document.createElement('input');
+    faseChk.type = 'checkbox';
+    faseChk.checked = faseActive;
+    faseChk.indeterminate = !faseActive && someEtapasActive;
+    faseChk.addEventListener('change', () => toggleTemplate(fase.id, faseChk.checked));
+    faseLabel.append(faseChk, document.createTextNode(fase.name));
+    box.appendChild(faseLabel);
+    if (etapas.length){
+      const stagesBox = document.createElement('div');
+      stagesBox.className = 'stages';
+      etapas.forEach(et => {
+        const lbl = document.createElement('label');
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = state.tasks.some(t => t.id === et.id);
+        chk.addEventListener('change', () => toggleTemplate(et.id, chk.checked));
+        const w = getWeightForEtapa(et.name);
+        lbl.append(chk, document.createTextNode(`${et.name} · Peso ${w}`));
+        stagesBox.appendChild(lbl);
+      });
+      box.appendChild(stagesBox);
+    }
+    body.appendChild(box);
+  });
+}
+function toggleTemplate(id, turnOn){
+  const node = TMPL_BY_ID.get(id);
+  if (!node) return;
+  const exists = state.tasks.some(t => t.id === id);
+  if (turnOn && !exists){
+    if (node.parentId && !state.tasks.some(t => t.id === node.parentId)) addTemplateNode(node.parentId);
+    addTemplateNode(id);
+    if (node.level === 1){
+      MIDEPLAN_TEMPLATE.filter(n => n.parentId === id).forEach(et => {
+        if (!state.tasks.some(t => t.id === et.id)) addTemplateNode(et.id);
+      });
+    }
+  } else if (!turnOn && exists){
+    const desc = getDescendantIds(id);
+    if (desc.length && !confirm(`"${node.name}" tiene ${desc.length} elemento(s) descendiente(s). ¿Eliminarlos todos?`)) {
+      renderTemplate(); return;
+    }
+    const toDelete = new Set([id, ...desc]);
+    state.tasks = state.tasks.filter(t => !toDelete.has(t.id));
+    toDelete.forEach(x => state.collapsed.delete(x));
+    if (state.editingId && toDelete.has(state.editingId)) resetForm();
+  }
+  save(); render(); renderTemplate();
+}
+function addTemplateNode(id){
+  if (state.tasks.some(t => t.id === id)) return;
+  const n = TMPL_BY_ID.get(id);
+  if (!n) return;
+  const today = fmtDate(new Date());
+  const sibs = state.tasks.filter(t => (t.parentId || '') === (n.parentId || ''));
+  const order = sibs.reduce((m,t) => Math.max(m, t.order ?? 0), -1) + 1;
+  state.tasks.push(normalize({
+    id: n.id, name: n.name, level: n.level, parentId: n.parentId,
+    start: today, end: today, progress: 0,
+    color: LEVEL_COLORS[n.level], predecessors: [], isMilestone: false, order
+  }));
+}
+
+/* ==================== Render Gantt ==================== */
+const mk = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+
+function render(){
+  const gantt = $('gantt');
+  const scroll = $('scroll');
+  const prevScroll = scroll.scrollLeft;
+  gantt.innerHTML = '';
+
+  const zoomLbl = $('zoomLabel');
+  if (zoomLbl) zoomLbl.textContent = ZOOM_LEVELS[state.zoomLevel].label;
+
+  const projLabel = $('fpProjectLabel');
+  if (projLabel){
+    const parts = [];
+    if (state.projectBpip) parts.push(`BPIP ${state.projectBpip}`);
+    if (state.projectName.trim()) parts.push(state.projectName.trim());
+    projLabel.textContent = parts.length ? parts.join(' · ') : 'Proyecto sin nombre';
+  }
+
+  if (!state.tasks.length && !state.projectName.trim() && !state.projectBpip){
+    gantt.innerHTML = '<div class="empty">Aún no hay elementos.<br>Escriba el código BPIP y el nombre del proyecto, active fases o etapas en Estructura Base.</div>';
+    updateMetrics();
+    return;
+  }
+
+  if (state.editingId && !state.tasks.some(t => t.id === state.editingId)) state.editingId = null;
+  if (state.addingToId && !state.tasks.some(t => t.id === state.addingToId)) state.addingToId = null;
+  if (state.draftId && !state.tasks.some(t => t.id === state.draftId)) state.draftId = null;
+
+  state.tasks = computeRollupDates(state.tasks);
+  const tree = buildTree(state.tasks);
+  const edtMap = computeEDTMap(tree);
+
+  const isRootCollapsed = state.collapsed.has('__root__');
+  const flat = isRootCollapsed ? [] : flattenVisible(tree, state.collapsed);
+
+  const rows = [];
+  const allTaskDates = state.tasks.flatMap(t => [t.start, t.end]).filter(Boolean);
+  const projStart = allTaskDates.length ? allTaskDates.reduce((a,b) => a < b ? a : b) : fmtDate(new Date());
+  const projEnd = allTaskDates.length ? allTaskDates.reduce((a,b) => a > b ? a : b) : projStart;
+  const overallProgress = calcOverallProgress();
+
+  rows.push({
+    task: {
+      id: '__root__',
+      name: state.projectName.trim() || 'Proyecto sin nombre',
+      bpip: state.projectBpip || '',
+      level: 0,
+      parentId: '',
+      start: projStart,
+      end: projEnd,
+      progress: overallProgress,
+      color: AYA.azul,
+      isMilestone: false,
+      isProject: true,
+      predecessors: []
+    },
+    depth: 0,
+    edt: '1'
+  });
+
+  flat.forEach(({task, depth}) => {
+    rows.push({ task, depth, edt: edtMap.get(task.id) || '' });
+  });
+
+  if (rows.length === 1 && rows[0].task.start === rows[0].task.end && !allTaskDates.length){
+    gantt.innerHTML = '<div class="empty">Aún no hay tareas registradas.<br>Escriba el nombre del proyecto y añada elementos en Datos de línea.</div>';
+    updateMetrics();
+    return;
+  }
+
+  const getProgress = buildProgressCache();
+
+  const allDates = rows.flatMap(r => [r.task.start, r.task.end]).filter(Boolean);
+  if (!allDates.length) { updateMetrics(); return; }
+  let min = parseDate(allDates.reduce((a,b) => a < b ? a : b));
+  let max = parseDate(allDates.reduce((a,b) => a > b ? a : b));
+
+  let start = addDays(min, -3);
+  start = addDays(start, -((start.getDay() + 6) % 7));
+  let end = addDays(max, 7);
+  end = addDays(end, 6 - ((end.getDay() + 6) % 7));
+
+  const totalDays = diffDays(start, end) + 1;
+  const zoom = ZOOM_LEVELS[state.zoomLevel];
+  const dw = zoom.dayW;
+  const trackW = totalDays * dw;
+  const nameW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--name-w')) || 320;
+  const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--row-h')) || 38;
+
+  gantt.style.setProperty('--dw', dw + 'px');
+  gantt.style.width = (nameW + trackW) + 'px';
+
+  const head = mk('div','ghead');
+  const corner = mk('div','gcorner'); corner.textContent = 'EDT · Estructura';
+  head.appendChild(corner);
+
+  const hwrap = mk('div','hwrap'); hwrap.style.width = trackW + 'px';
+  const topCells = buildHeaderCells(start, totalDays, dw, zoom.top);
+  const bottomCells = buildHeaderCells(start, totalDays, dw, zoom.bottom);
+
+  const monthsRow = mk('div','hmonths');
+  topCells.forEach(c => {
+    const cell = mk('div','hmonth');
+    cell.style.width = c.width + 'px';
+    cell.textContent = c.text;
+    monthsRow.appendChild(cell);
+  });
+  const daysRow = mk('div','hdays');
+  bottomCells.forEach(c => {
+    const cell = mk('div','hday');
+    cell.style.width = c.width + 'px';
+    if (c.isWeekend) cell.classList.add('we');
+    if (c.isHoliday) cell.classList.add('holiday');
+    if (c.isToday) cell.classList.add('today');
+    cell.textContent = c.text;
+    daysRow.appendChild(cell);
+  });
+  hwrap.append(monthsRow, daysRow);
+  head.appendChild(hwrap);
+  gantt.appendChild(head);
+
+  const body = mk('div','gbody');
+
+  const bgLayer = mk('div','bg-layer');
+  bgLayer.style.width = trackW + 'px';
+
+  const gridEl = mk('div','bg-grid');
+  gridEl.style.width = trackW + 'px';
+  if (zoom.bottom === 'week'){
+    gridEl.style.backgroundImage = `repeating-linear-gradient(to right, rgba(27,41,78,.15) 0 1px, transparent 1px ${7*dw}px)`;
+  } else if (zoom.bottom !== 'day'){
+    gridEl.style.backgroundImage = 'none';
+  }
+  bgLayer.appendChild(gridEl);
+
+  {
+    let i = 0;
+    while (i < totalDays){
+      const d = addDays(start, i);
+      const kind = isNonWorkDay(d);
+      if (!kind) { i++; continue; }
+      let j = i;
+      while (j < totalDays){
+        const dd = addDays(start, j);
+        const kk = isNonWorkDay(dd);
+        if (kk !== kind) break;
+        j++;
+      }
+      const band = mk('div', kind === 'holiday' ? 'bg-holiday' : 'bg-weekend');
+      band.style.left = (i * dw) + 'px';
+      band.style.width = ((j - i) * dw) + 'px';
+      bgLayer.appendChild(band);
+      i = j;
+    }
+  }
+
+  if (zoom.bottom === 'month' || zoom.bottom === 'quarter'){
+    let i = 0;
+    while (i < totalDays){
+      const d = addDays(start, i);
+      const line = mk('div','bg-weekend');
+      line.style.left = (i * dw) + 'px';
+      line.style.width = '1px';
+      line.style.background = 'rgba(27,41,78,.2)';
+      bgLayer.appendChild(line);
+      if (zoom.bottom === 'month'){
+        const m = d.getMonth(), y = d.getFullYear();
+        while (i < totalDays && addDays(start, i).getMonth() === m && addDays(start, i).getFullYear() === y) i++;
+      } else {
+        const q = Math.floor(d.getMonth() / 3), y = d.getFullYear();
+        while (i < totalDays && Math.floor(addDays(start, i).getMonth() / 3) === q && addDays(start, i).getFullYear() === y) i++;
+      }
+    }
+  }
+
+  body.appendChild(bgLayer);
+
+  const barPositions = new Map();
+  rows.forEach(({task, depth, edt}, idx) => {
+    const isProject = task.isProject === true;
+    const isDraft = !isProject && task.isDraft === true;
+    const rowClass = 'grow lvl' + (isProject ? 0 : task.level)
+      + (task.isMilestone ? ' milestone' : '')
+      + (isDraft ? ' draft' : '')
+      + (state.editingId === task.id ? ' editing' : '');
+    const row = mk('div', rowClass);
+    row.dataset.id = task.id;
+    row.draggable = !isProject && !isDraft;
+    row.title = isProject ? 'Proyecto (EDT 1) · Clic en el toggle para plegar todo'
+      : isDraft ? 'Línea nueva sin confirmar · Complete los datos y pulse "+ Añadir"'
+      : 'Clic para editar · Arrastrar para reordenar';
+
+    const nameCell = mk('div','gname');
+    const indent = mk('span','indent'); indent.style.width = (depth * 14) + 'px';
+
+    const edtBadge = mk('span','edt-code');
+    edtBadge.textContent = edt || '—';
+    edtBadge.title = 'Código EDT';
+
+    const hasChildren = isProject ? (tree.children.get('') || []).length > 0 : (tree.children.get(task.id) || []).length > 0;
+    let toggleEl;
+    if (hasChildren && !isDraft){
+      toggleEl = mk('button','toggle-btn');
+      toggleEl.type = 'button';
+      const isCollapsed = isProject ? state.collapsed.has('__root__') : state.collapsed.has(task.id);
+      toggleEl.textContent = isCollapsed ? '▶' : '▼';
+      toggleEl.title = isCollapsed ? 'Expandir' : 'Colapsar';
+      toggleEl.dataset.toggleId = isProject ? '__root__' : task.id;
+      toggleEl.draggable = false;
+    } else {
+      toggleEl = mk('span','toggle-spacer');
+    }
+
+    const txt = mk('div','gname-txt');
+
+    if (isProject && task.bpip){
+      const bpipLine = mk('span','gname-bpip-line');
+      bpipLine.textContent = `BPIP ${task.bpip}`;
+      bpipLine.title = `Código BPIP del proyecto: ${task.bpip}`;
+      txt.appendChild(bpipLine);
+    }
+
+    const nameEl = mk('span','gname-title');
+    nameEl.textContent = task.name;
+    nameEl.title = `${LEVEL_NAMES[isProject ? 0 : task.level]}${task.isMilestone ? ' · Hito' : ''}: ${task.name}`;
+    const datesEl = mk('span','gname-dates');
+    const computedProgress = isProject ? task.progress : getProgress(task.id);
+    const progressText = (Math.abs(computedProgress - task.progress) > 0.5 && !isProject)
+      ? Math.round(computedProgress) + '% (calc)'
+      : Math.round(computedProgress) + '%';
+    datesEl.textContent = shortDate(task.start) + (task.start === task.end ? '' : ' → ' + shortDate(task.end)) + ' · ' + progressText;
+    if (!isProject && task.level === 2){
+      const w = getWeightForEtapa(task.name);
+      const wb = mk('span','w-badge');
+      wb.textContent = `Peso ${w}`;
+      wb.title = 'Peso según Norma Técnica MIDEPLAN 2025';
+      datesEl.appendChild(wb);
+    }
+    txt.append(nameEl, datesEl);
+
+    let qaGroup = null;
+    if (isProject){
+      qaGroup = mk('div','qa-group');
+      const qa = mk('button','qa');
+      qa.type = 'button';
+      qa.dataset.addLevel = '1';
+      qa.dataset.parentId = '';
+      qa.textContent = '+F';
+      qa.title = 'Añadir fase al proyecto';
+      qa.draggable = false;
+      qaGroup.appendChild(qa);
+    } else if (!isDraft) {
+      const childLevels = getChildLevels(task);
+      if (childLevels.length){
+        qaGroup = mk('div','qa-group');
+        childLevels.forEach(cl => {
+          const qa = mk('button','qa');
+          qa.type = 'button';
+          qa.dataset.addLevel = String(cl);
+          qa.dataset.parentId = task.id;
+          qa.textContent = childButtonLabel(cl);
+          qa.title = childButtonTitle(cl);
+          qa.draggable = false;
+          qaGroup.appendChild(qa);
+        });
+      }
+    }
+
+    let delEl = null;
+    if (!isProject){
+      delEl = mk('button','del');
+      delEl.type='button'; delEl.textContent='×'; delEl.title='Eliminar'; delEl.dataset.id = task.id; delEl.draggable = false;
+    }
+
+    nameCell.append(indent, edtBadge, toggleEl, txt);
+    if (qaGroup) nameCell.appendChild(qaGroup);
+    if (delEl) nameCell.appendChild(delEl);
+
+    const track = mk('div','gtrack'); track.style.width = trackW + 'px';
+
+    const s = parseDate(task.start), e = parseDate(task.end);
+    const offset = diffDays(start, s);
+    const dur = diffDays(s, e) + 1;
+
+    if (isProject){
+      const left = offset * dw;
+      const width = Math.max(dur * dw - 2, 6);
+      const bar = mk('div','gbar project-bar');
+      bar.style.left = left + 'px';
+      bar.style.width = width + 'px';
+      bar.style.background = `linear-gradient(to right, ${AYA.azul} 0%, ${AYA.azul} ${task.progress}%, rgba(27,41,78,.35) ${task.progress}%, rgba(27,41,78,.35) 100%)`;
+      bar.title = `${task.name}${task.bpip ? ` · BPIP ${task.bpip}` : ''}\n${shortDate(task.start)} → ${shortDate(task.end)}\nAvance: ${Math.round(task.progress)}%`;
+      track.appendChild(bar);
+      barPositions.set(task.id, { left, width, rowIndex: idx, milestone: false, project: true });
+    } else if (task.isMilestone){
+      const bar = mk('div','gbar milestone');
+      bar.style.left = (offset * dw) + 'px';
+      bar.style.width = Math.max(dur * dw - 2, 22) + 'px';
+      bar.title = `Hito: ${task.name}\n${shortDate(task.start)}`;
+      track.appendChild(bar);
+      barPositions.set(task.id, { left: offset*dw, width: Math.max(dur*dw - 2, 22), rowIndex: idx, milestone: true });
+    } else {
+      const left = offset * dw;
+      const width = Math.max(dur * dw - 2, 4);
+      const transparentColor = hexToRgba(task.color, 0.22);
+      const bar = mk('div','gbar');
+      bar.style.left = left + 'px';
+      bar.style.width = width + 'px';
+      bar.style.background =
+        `linear-gradient(to right, ${task.color} 0%, ${task.color} ${computedProgress}%, ` +
+        `${transparentColor} ${computedProgress}%, ${transparentColor} 100%)`;
+      bar.style.boxShadow = `0 1px 3px rgba(27,41,78,.2), inset 0 0 0 1.5px ${task.color}`;
+      bar.title = `${task.name}\n${shortDate(task.start)} → ${shortDate(task.end)}\nProgreso: ${Math.round(computedProgress)}%`;
+      track.appendChild(bar);
+      barPositions.set(task.id, { left, width, rowIndex: idx, milestone: false });
+    }
+
+    row.append(nameCell, track);
+    body.appendChild(row);
+  });
+
+  const todayISO = fmtDate(new Date());
+  const todayOffset = diffDays(start, parseDate(todayISO));
+  if (todayOffset >= 0 && todayOffset < totalDays){
+    const line = mk('div','todayline');
+    line.style.left = (nameW + todayOffset * dw + dw / 2) + 'px';
+    body.appendChild(line);
+  }
+
+  gantt.appendChild(body);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.id = 'depSvg';
+  svg.setAttribute('width', nameW + trackW);
+  svg.setAttribute('height', body.offsetHeight);
+  svg.style.width = (nameW + trackW) + 'px';
+  svg.style.height = body.offsetHeight + 'px';
+  gantt.appendChild(svg);
+  dibujarDependencias(rows, barPositions, nameW, rowH, svg);
+
+  scroll.scrollLeft = firstRender ? 0 : prevScroll;
+  if (firstRender){ firstRender = false; scrollToToday(); }
+  actualizarSelectores();
+  updateHint();
+  updateMetrics();
+}
+
+function updateMetrics(){
+  const progress = calcOverallProgress();
+  const spi = calcSPI();
+  const etapas = state.tasks.filter(t => t.level === 2);
+  const totalWeight = etapas.reduce((s, t) => s + getWeightForEtapa(t.name), 0);
+  const weightedEtapas = etapas.filter(t => getWeightForEtapa(t.name) > 0).length;
+
+  $('metricProgress').textContent = progress.toFixed(1) + '%';
+  $('metricWeight').textContent = totalWeight;
+  $('metricEtapas').textContent = weightedEtapas;
+
+  const spiCard = $('metric-spi');
+  const spiEl = $('metricSPI');
+  const spiSub = $('metricSPISub');
+  spiCard.classList.remove('spi-ok','spi-warn','spi-bad');
+  if (spi === null){
+    spiEl.textContent = 'N/D';
+    spiSub.textContent = 'Sin datos';
+  } else {
+    spiEl.textContent = spi.toFixed(2);
+    spiSub.textContent = spiLabel(spi);
+    if (spi >= 0.9) spiCard.classList.add('spi-ok');
+    else if (spi >= 0.7) spiCard.classList.add('spi-warn');
+    else spiCard.classList.add('spi-bad');
+  }
+}
+
+function dibujarDependencias(rows, positions, nameW, rowH, svg){
+  const ns = 'http://www.w3.org/2000/svg';
+  const byId = new Map(rows.map(({task}) => [task.id, task]));
+  const strokeColor = 'rgba(27,41,78,.45)';
+  const arrowColor  = 'rgba(27,41,78,.65)';
+  rows.forEach(({task}) => {
+    if (!task.predecessors || !task.predecessors.length) return;
+    const target = positions.get(task.id);
+    if (!target) return;
+    task.predecessors.forEach(predId => {
+      const pred = byId.get(predId);
+      const source = positions.get(predId);
+      if (!pred || !source) return;
+      const x1 = nameW + source.left + source.width;
+      const y1 = source.rowIndex * rowH + rowH / 2;
+      const x2 = nameW + target.left;
+      const y2 = target.rowIndex * rowH + rowH / 2;
+      const midX = Math.max(x1 + 8, x1 + 12);
+      const points = [[x1, y1], [midX, y1], [midX, y2], [x2, y2]];
+      const poly = document.createElementNS(ns, 'polyline');
+      poly.setAttribute('points', points.map(p => p.join(',')).join(' '));
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', strokeColor);
+      poly.setAttribute('stroke-width', '1.5');
+      poly.setAttribute('stroke-dasharray', '4 3');
+      svg.appendChild(poly);
+      const arrow = document.createElementNS(ns, 'polygon');
+      const size = 5;
+      arrow.setAttribute('points', [
+        [x2, y2], [x2 - size, y2 - size], [x2 - size, y2 + size]
+      ].map(p => p.join(',')).join(' '));
+      arrow.setAttribute('fill', arrowColor);
+      svg.appendChild(arrow);
+    });
+  });
+}
+
+function getPredCandidatesForContext(){
+  let level = Number($('tLevel').value);
+  let editingId = state.editingId;
+  if (state.editingId){
+    const t = state.tasks.find(x => x.id === state.editingId);
+    if (t){ level = t.level; }
+  } else if (state.addingToId){
+    const p = state.tasks.find(x => x.id === state.addingToId);
+    if (p){ level = Math.min(p.level + 1, 4); }
+  } else if (state.draftId){
+    const d = state.tasks.find(x => x.id === state.draftId);
+    if (d){ level = d.level; }
+  }
+  if (level !== 3 && level !== 4) return [];
+
+  const excludeIds = new Set();
+  const targetId = editingId || state.draftId;
+  if (targetId){
+    excludeIds.add(targetId);
+    getDescendantIds(targetId).forEach(id => excludeIds.add(id));
+    getAncestorIds(targetId).forEach(id => excludeIds.add(id));
+  }
+  return state.tasks.filter(t => (t.level === 3 || t.level === 4) && !t.isDraft && !excludeIds.has(t.id));
+}
+
+function actualizarSelectores(){
+  const nivel = Number($('tLevel').value);
+  const parentSelect = $('tParent');
+  const currentParent = parentSelect.value;
+  parentSelect.innerHTML = '<option value="">— Ninguno —</option>';
+
+  const excludeIds = new Set();
+  if (state.editingId){
+    excludeIds.add(state.editingId);
+    getDescendantIds(state.editingId).forEach(id => excludeIds.add(id));
+  }
+  const posibles = state.tasks.filter(t => !t.isDraft && !excludeIds.has(t.id) && t.level === nivel - 1);
+  posibles.sort((a,b) => a.name.localeCompare(b.name));
+  posibles.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = `[${LEVEL_NAMES[t.level]}] ${t.name}`;
+    parentSelect.appendChild(opt);
+  });
+  if ([...parentSelect.options].some(o => o.value === currentParent)) parentSelect.value = currentParent;
+
+  const predSelect = $('tPred');
+  const prevVal = predSelect.value;
+  predSelect.innerHTML = '<option value="">— Ninguna —</option>';
+  const candidates = getPredCandidatesForContext()
+    .sort((a,b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+  candidates.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    const lvlTag = t.level === 3 ? '[Paquete] ' : '[Actividad] ';
+    opt.textContent = `${lvlTag}${shortDate(t.start)} · ${t.name}${t.isMilestone ? ' [HITO]' : ''}`;
+    predSelect.appendChild(opt);
+  });
+
+  const targetId = state.editingId || state.draftId;
+  if (targetId){
+    const et = state.tasks.find(x => x.id === targetId);
+    if (et && et.predecessors.length > 0 && [...predSelect.options].some(o => o.value === et.predecessors[0])){
+      predSelect.value = et.predecessors[0];
+    } else {
+      predSelect.value = '';
+    }
+  } else {
+    if ([...predSelect.options].some(o => o.value === prevVal)) predSelect.value = prevVal;
+    else predSelect.value = '';
+  }
+
+  const msChk = $('tMilestone');
+  const canBeHito = (nivel === 3 || nivel === 4);
+  msChk.disabled = !canBeHito;
+  if (!canBeHito && msChk.checked){
+    msChk.checked = false;
+    $('tEnd').disabled = false;
+    $('tDays').disabled = false;
+  }
+}
+
+function updateHint(){
+  const hintEl = $('editHint');
+  const ctxEl = $('editContext');
+  if (!hintEl || !ctxEl) return;
+  if (state.editingId){
+    const t = state.tasks.find(x => x.id === state.editingId);
+    if (t){ hintEl.style.display = 'inline-flex'; ctxEl.innerHTML = `Editando: <strong>${escapeHtml(t.name)}</strong>`; return; }
+  }
+  if (state.draftId){
+    const d = state.tasks.find(x => x.id === state.draftId);
+    if (d){
+      hintEl.style.display = 'inline-flex';
+      const parent = d.parentId ? state.tasks.find(p => p.id === d.parentId) : null;
+      const where = parent ? ` dentro de <strong>[${LEVEL_NAMES[parent.level]}] ${escapeHtml(parent.name)}</strong>` : '';
+      ctxEl.innerHTML = `Nueva ${LEVEL_NAMES[d.level].toLowerCase()}${where} · Complete los datos y confirme`;
+      return;
+    }
+  }
+  if (state.addingToId){
+    const p = state.tasks.find(x => x.id === state.addingToId);
+    if (p){ hintEl.style.display = 'inline-flex'; ctxEl.innerHTML = `Añadiendo dentro de: <strong>[${LEVEL_NAMES[p.level]}] ${escapeHtml(p.name)}</strong>`; return; }
+  }
+  hintEl.style.display = 'none';
+}
+
+/* ==================== Sincronización días hábiles / fechas ==================== */
+function syncDatesFromDays(){
+  if ($('tMilestone').checked){ $('tDays').value = 1; $('tEnd').value = $('tStart').value; return; }
+  const start = $('tStart').value;
+  const days = Math.max(1, Number($('tDays').value) || 1);
+  if (start){
+    const endDate = getEndDateFromWorkDays(parseDate(start), days);
+    $('tEnd').value = fmtDate(endDate);
+  }
+}
+function syncDaysFromDates(){
+  if ($('tMilestone').checked){ $('tDays').value = 1; return; }
+  const start = $('tStart').value, end = $('tEnd').value;
+  if (start && end){
+    const days = countWorkDaysBetween(parseDate(start), parseDate(end));
+    $('tDays').value = Math.max(1, days);
+  }
+}
+
+/* ==================== Reubicar después de predecesora ==================== */
+function placeTaskAfterPredecessor(taskId, predId){
+  const task = state.tasks.find(t => t.id === taskId);
+  const pred = state.tasks.find(t => t.id === predId);
+  if (!task || !pred || task.id === pred.id) return;
+  if (getDescendantIds(taskId).includes(predId)) return;
+
+  const newParent = pred.parentId || '';
+  const parentObj = newParent ? state.tasks.find(t => t.id === newParent) : null;
+  const parentLevel = parentObj ? parentObj.level : 0;
+  if (parentLevel !== task.level - 1) return;
+
+  const oldParent = task.parentId || '';
+  task.parentId = newParent;
+
+  const sibs = state.tasks
+    .filter(t => t.id !== taskId && (t.parentId || '') === newParent)
+    .sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const predIdx = sibs.findIndex(t => t.id === predId);
+  if (predIdx < 0) return;
+
+  sibs.splice(predIdx + 1, 0, task);
+  sibs.forEach((s, i) => { s.order = i; });
+
+  if (oldParent !== newParent){
+    state.tasks
+      .filter(t => (t.parentId || '') === oldParent && t.id !== taskId)
+      .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
+      .forEach((t, i) => { t.order = i; });
+  }
+}
+
+/* ==================== Draft ==================== */
+function discardDraft(){
+  if (!state.draftId) return;
+  state.tasks = state.tasks.filter(t => t.id !== state.draftId);
+  state.draftId = null;
+}
+
+function startEdit(id){
+  discardDraft();
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  state.editingId = id;
+  state.addingToId = null;
+  $('tName').value = t.name;
+  $('tLevel').value = String(t.level);
+  actualizarSelectores();
+  $('tParent').value = t.parentId || '';
+  if ($('tParent').value !== (t.parentId || '')) $('tParent').value = '';
+  $('tStart').value = t.start;
+  $('tEnd').value = t.end;
+  $('tMilestone').checked = !!t.isMilestone;
+  $('tEnd').disabled = !!t.isMilestone;
+  $('tDays').disabled = !!t.isMilestone;
+  if (t.isMilestone) { $('tEnd').value = t.start; $('tDays').value = 1; }
+  else syncDaysFromDates();
+  $('tProg').value = t.progress;
+  $('tColor').value = t.color;
+  actualizarSelectores();
+  $('btnSubmit').textContent = 'Guardar cambios';
+  updateHint();
+  render();
+  $('tName').focus();
+}
+
+function prefillChildForm(parentId, childLevel){
+  discardDraft();
+  const parent = state.tasks.find(t => t.id === parentId);
+  if (!parent && parentId !== '') return;
+
+  const today = fmtDate(new Date());
+
+  let actualParentId = parentId;
+  let insertAfterId = null;
+  if (parent && parent.level === 4 && childLevel === 4){
+    actualParentId = parent.parentId || '';
+    insertAfterId = parent.id;
+  }
+
+  const siblings = state.tasks.filter(t => (t.parentId || '') === actualParentId && !t.isDraft);
+  let newOrder;
+  if (insertAfterId){
+    const pIdx = siblings.findIndex(t => t.id === insertAfterId);
+    if (pIdx >= 0){
+      newOrder = (siblings[pIdx].order ?? pIdx) + 0.5;
+    } else {
+      newOrder = siblings.reduce((m,t) => Math.max(m, t.order ?? 0), -1) + 1;
+    }
+  } else {
+    newOrder = siblings.reduce((m,t) => Math.max(m, t.order ?? 0), -1) + 1;
+  }
+
+  const levelName = LEVEL_NAMES[childLevel] || 'elemento';
+  const draftTask = normalize({
+    name: `(Nueva ${levelName.toLowerCase()})`,
+    level: childLevel,
+    parentId: actualParentId,
+    start: today, end: today,
+    progress: 0,
+    color: LEVEL_COLORS[childLevel] || AYA.azul,
+    predecessors: [],
+    isMilestone: false,
+    isDraft: true,
+    order: newOrder
+  });
+  state.tasks.push(draftTask);
+
+  state.tasks
+    .filter(t => (t.parentId || '') === actualParentId)
+    .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
+    .forEach((t, i) => { t.order = i; });
+
+  state.draftId = draftTask.id;
+  state.editingId = null;
+  state.addingToId = actualParentId;
+
+  $('tName').value = '';
+  $('tLevel').value = String(childLevel);
+  actualizarSelectores();
+  $('tParent').value = actualParentId;
+  if ($('tParent').value !== actualParentId){
+    const actualParent = state.tasks.find(t => t.id === actualParentId);
+    if (actualParent){
+      const opt = document.createElement('option');
+      opt.value = actualParentId;
+      opt.textContent = `[${LEVEL_NAMES[actualParent.level]}] ${actualParent.name}`;
+      $('tParent').appendChild(opt);
+      $('tParent').value = actualParentId;
+    }
+  }
+  $('tStart').value = today;
+  $('tDays').value = 5;
+  syncDatesFromDays();
+  $('tMilestone').checked = false;
+  $('tEnd').disabled = false;
+  $('tDays').disabled = false;
+  $('tProg').value = 0;
+  $('tColor').value = LEVEL_COLORS[childLevel] || AYA.azul;
+  actualizarSelectores();
+  $('tPred').value = '';
+  $('btnSubmit').textContent = '+ Añadir';
+  updateHint();
+  render();
+  $('tName').focus();
+}
+
+function resetForm(){
+  discardDraft();
+  state.editingId = null;
+  state.addingToId = null;
+  $('tName').value = '';
+  $('tLevel').value = '4';
+  actualizarSelectores();
+  const today = new Date();
+  $('tStart').value = fmtDate(today);
+  $('tDays').value = 5;
+  $('tEnd').value = fmtDate(getEndDateFromWorkDays(today, 5));
+  $('tMilestone').checked = false;
+  $('tEnd').disabled = false;
+  $('tDays').disabled = false;
+  $('tProg').value = 0;
+  $('tColor').value = AYA.azul;
+  $('tPred').value = '';
+  $('btnSubmit').textContent = '+ Añadir';
+  updateHint();
+}
+
+$('btnCancelEdit').addEventListener('click', () => { resetForm(); render(); });
+
+/* ==================== Drag & Drop ==================== */
+let dragId = null;
+function cleanupDrag(){
+  dragId = null;
+  document.querySelectorAll('.grow.dragging, .grow.drop-before, .grow.drop-after, .grow.drop-into')
+    .forEach(r => r.classList.remove('dragging','drop-before','drop-after','drop-into'));
+}
+function getDropMode(drag, target){
+  if (!drag || !target || drag.id === target.id || drag.isProject || target.isProject) return false;
+  if (drag.isDraft || target.isDraft) return false;
+  if (getDescendantIds(drag.id).includes(target.id)) return false;
+  if (drag.level === target.level) return 'reorder';
+  if (drag.level === target.level + 1) return 'reparent';
+  return false;
+}
+function moveTask(dragTaskId, targetTaskId, mode, position){
+  const drag = state.tasks.find(t => t.id === dragTaskId);
+  const target = state.tasks.find(t => t.id === targetTaskId);
+  if (!drag || !target) return false;
+  if (mode === 'reorder'){
+    if (drag.level !== target.level) return false;
+    if (getDescendantIds(dragTaskId).includes(targetTaskId)) return false;
+    const oldParent = drag.parentId || '';
+    const newParent = target.parentId || '';
+    const siblings = state.tasks.filter(t => (t.parentId || '') === newParent && t.id !== dragTaskId)
+      .sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+    let idx = siblings.findIndex(t => t.id === targetTaskId);
+    if (idx < 0) return false;
+    if (position === 'after') idx++;
+    siblings.splice(idx, 0, drag);
+    siblings.forEach((t, i) => { t.order = i; });
+    drag.parentId = newParent;
+    if (oldParent !== newParent){
+      state.tasks.filter(t => (t.parentId || '') === oldParent)
+        .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
+        .forEach((t, i) => { t.order = i; });
+    }
+    return true;
+  }
+  if (mode === 'reparent'){
+    if (drag.level !== target.level + 1) return false;
+    if (getDescendantIds(dragTaskId).includes(targetTaskId)) return false;
+    if (drag.parentId === targetTaskId) return false;
+    const oldParent = drag.parentId || '';
+    const siblings = state.tasks.filter(t => (t.parentId || '') === targetTaskId && t.id !== dragTaskId);
+    const maxOrder = siblings.reduce((m,t) => Math.max(m, t.order ?? 0), -1);
+    drag.parentId = targetTaskId;
+    drag.order = maxOrder + 1;
+    if (oldParent !== targetTaskId){
+      state.tasks.filter(t => (t.parentId || '') === oldParent)
+        .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
+        .forEach((t, i) => { t.order = i; });
+    }
+    return true;
+  }
+  return false;
+}
+
+/* ==================== Eventos del Gantt ==================== */
+const ganttEl = $('gantt');
+
+ganttEl.addEventListener('mousedown', ev => {
+  if (ev.target.closest('.gbar') || ev.target.closest('.del') || ev.target.closest('.qa') || ev.target.closest('.toggle-btn')) ev.preventDefault();
+});
+
+ganttEl.addEventListener('click', ev => {
+  const toggle = ev.target.closest('.toggle-btn');
+  if (toggle){
+    ev.stopPropagation();
+    const id = toggle.dataset.toggleId;
+    if (state.collapsed.has(id)) state.collapsed.delete(id);
+    else state.collapsed.add(id);
+    render();
+    return;
+  }
+  const qa = ev.target.closest('.qa');
+  if (qa){
+    ev.stopPropagation();
+    prefillChildForm(qa.dataset.parentId, Number(qa.dataset.addLevel));
+    return;
+  }
+  const del = ev.target.closest('.del');
+  if (del){
+    const id = del.dataset.id;
+    const desc = getDescendantIds(id);
+    if (desc.length && !confirm(`¿Eliminar este elemento y sus ${desc.length} descendiente(s)?`)) return;
+    const toDelete = new Set([id, ...desc]);
+    if (state.draftId && toDelete.has(state.draftId)) state.draftId = null;
+    state.tasks = state.tasks.filter(t => !toDelete.has(t.id));
+    toDelete.forEach(x => state.collapsed.delete(x));
+    if (state.editingId && toDelete.has(state.editingId)) resetForm();
+    if (state.addingToId && toDelete.has(state.addingToId)) resetForm();
+    save(); render(); renderTemplate();
+    return;
+  }
+  const bar = ev.target.closest('.gbar');
+  const name = ev.target.closest('.gname');
+  if (bar || name){
+    const row = (bar || name).closest('.grow');
+    if (row && row.dataset.id && row.dataset.id !== '__root__') startEdit(row.dataset.id);
+  }
+});
+
+ganttEl.addEventListener('dragstart', ev => {
+  if (ev.target.closest('.qa') || ev.target.closest('.del') || ev.target.closest('.gbar') || ev.target.closest('.toggle-btn')){
+    ev.preventDefault(); return;
+  }
+  const row = ev.target.closest('.grow');
+  if (!row || !row.dataset.id || row.dataset.id === '__root__') return;
+  if (row.classList.contains('draft')) return;
+  dragId = row.dataset.id;
+  row.classList.add('dragging');
+  ev.dataTransfer.effectAllowed = 'move';
+  try { ev.dataTransfer.setData('text/plain', dragId); } catch(e){}
+});
+ganttEl.addEventListener('dragover', ev => {
+  if (!dragId) return;
+  const row = ev.target.closest('.grow');
+  if (!row || !row.dataset.id || row.dataset.id === dragId || row.dataset.id === '__root__') return;
+  if (row.classList.contains('draft')) return;
+  const drag = state.tasks.find(t => t.id === dragId);
+  const target = state.tasks.find(t => t.id === row.dataset.id);
+  const mode = getDropMode(drag, target);
+  if (!mode) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.grow').forEach(r => {
+    if (r !== row) r.classList.remove('drop-before','drop-after','drop-into');
+  });
+  if (mode === 'reorder'){
+    const rect = row.getBoundingClientRect();
+    const pos = ev.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+    row.classList.remove('drop-into');
+    row.classList.toggle('drop-before', pos === 'before');
+    row.classList.toggle('drop-after', pos === 'after');
+    row.dataset.dropPos = pos;
+  } else {
+    row.classList.remove('drop-before','drop-after');
+    row.classList.add('drop-into');
+    row.dataset.dropPos = 'into';
+  }
+  row.dataset.dropMode = mode;
+});
+ganttEl.addEventListener('drop', ev => {
+  const row = ev.target.closest('.grow');
+  if (!row || !dragId || row.dataset.id === '__root__') return;
+  ev.preventDefault();
+  const mode = row.dataset.dropMode || 'reorder';
+  const pos = row.dataset.dropPos || 'before';
+  const targetId = row.dataset.id;
+  const draggedId = dragId;
+  const moved = moveTask(draggedId, targetId, mode, pos);
+  cleanupDrag();
+  if (moved){
+    save(); render();
+    if (state.editingId === draggedId) startEdit(draggedId);
+  }
+});
+ganttEl.addEventListener('dragend', cleanupDrag);
+
+/* ==================== BLOQUEO COMBINADO BPIP + NOMBRE ==================== */
+function canLockProjectInfo(){
+  const bpip = ($('projBpip').value || '').replace(/\D/g, '').slice(0, 6);
+  const name = ($('projName').value || '').trim();
+  return bpip.length === 6 && name !== '';
+}
+
+function applyProjectInfoState(){
+  const bpipInput = $('projBpip');
+  const nameInput = $('projName');
+  const bpipWrap = $('projBpipWrap');
+  const nameWrap = $('projNameWrap');
+  const btn = $('btnEditProjectInfo');
+  if (!bpipInput || !nameInput || !bpipWrap || !nameWrap || !btn) return;
+
+  const locked = state.projectInfoLocked && canLockProjectInfo();
+
+  bpipInput.readOnly = locked;
+  nameInput.readOnly = locked;
+  if (locked){
+    bpipInput.setAttribute('readonly','readonly');
+    nameInput.setAttribute('readonly','readonly');
+  } else {
+    bpipInput.removeAttribute('readonly');
+    nameInput.removeAttribute('readonly');
+  }
+
+  bpipWrap.classList.toggle('locked', locked);
+  nameWrap.classList.toggle('locked', locked);
+  btn.classList.toggle('visible', locked);
+}
+
+function tryLockProjectInfo(){
+  if (canLockProjectInfo()){
+    state.projectInfoLocked = true;
+    applyProjectInfoState();
+  }
+}
+
+function unlockProjectInfo(){
+  state.projectInfoLocked = false;
+  applyProjectInfoState();
+  $('projBpip').focus();
+  $('projBpip').select();
+}
+
+function updateProjectLabel(){
+  const projLabel = $('fpProjectLabel');
+  if (!projLabel) return;
+  const parts = [];
+  if (state.projectBpip) parts.push(`BPIP ${state.projectBpip}`);
+  if (state.projectName.trim()) parts.push(state.projectName.trim());
+  projLabel.textContent = parts.length ? parts.join(' · ') : 'Proyecto sin nombre';
+}
+
+$('projBpip').addEventListener('input', () => {
+  let v = ($('projBpip').value || '').replace(/\D/g, '').slice(0, 6);
+  if ($('projBpip').value !== v) $('projBpip').value = v;
+  state.projectBpip = v;
+  try { localStorage.setItem(KEY + '_projectBpip', v); } catch(e){}
+  updateProjectLabel();
+  applyProjectInfoState();
+  render();
+});
+
+$('projName').addEventListener('input', () => {
+  state.projectName = $('projName').value || '';
+  try { localStorage.setItem(KEY + '_projectName', state.projectName); } catch(e){}
+  updateProjectLabel();
+  applyProjectInfoState();
+  render();
+});
+
+['projBpip','projName'].forEach(id => {
+  const el = $(id);
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      tryLockProjectInfo();
+      el.blur();
+    }
+  });
+});
+
+let projInfoBlurTimer = null;
+function scheduleProjInfoCommit(){
+  clearTimeout(projInfoBlurTimer);
+  projInfoBlurTimer = setTimeout(() => {
+    const active = document.activeElement;
+    if (active === $('projBpip') || active === $('projName') || active === $('btnEditProjectInfo')) return;
+    tryLockProjectInfo();
+  }, 120);
+}
+$('projBpip').addEventListener('blur', scheduleProjInfoCommit);
+$('projName').addEventListener('blur', scheduleProjInfoCommit);
+
+$('btnEditProjectInfo').addEventListener('mousedown', e => e.preventDefault());
+$('btnEditProjectInfo').addEventListener('click', () => {
+  unlockProjectInfo();
+});
+
+/* ==================== Formulario ==================== */
+$('tMilestone').addEventListener('change', () => {
+  if ($('tMilestone').checked){
+    $('tEnd').disabled = true;
+    $('tDays').disabled = true;
+    $('tDays').value = 1;
+    $('tEnd').value = $('tStart').value;
+  } else {
+    $('tEnd').disabled = false;
+    $('tDays').disabled = false;
+    syncDatesFromDays();
+  }
+  actualizarSelectores();
+});
+$('tStart').addEventListener('change', () => {
+  if ($('tMilestone').checked){ $('tEnd').value = $('tStart').value; $('tDays').value = 1; return; }
+  syncDatesFromDays();
+});
+$('tEnd').addEventListener('change', () => {
+  if ($('tMilestone').checked) return;
+  syncDaysFromDates();
+});
+$('tDays').addEventListener('input', () => {
+  if ($('tMilestone').checked){ $('tDays').value = 1; return; }
+  syncDatesFromDays();
+});
+$('tPred').addEventListener('change', () => {
+  const predId = $('tPred').value;
+  if (!predId) return;
+  const pred = state.tasks.find(t => t.id === predId);
+  if (!pred) return;
+  const days = Math.max(1, Number($('tDays').value) || 1);
+  const newStart = nextWorkDay(parseDate(pred.end));
+  $('tStart').value = fmtDate(newStart);
+  if ($('tMilestone').checked){
+    $('tEnd').value = fmtDate(newStart);
+    $('tDays').value = 1;
+  } else {
+    $('tDays').value = days;
+    $('tEnd').value = fmtDate(getEndDateFromWorkDays(newStart, days));
+  }
+  const predParent = pred.parentId || '';
+  const nivel = Number($('tLevel').value);
+  if (predParent){
+    const parentObj = state.tasks.find(t => t.id === predParent);
+    if (parentObj && parentObj.level === nivel - 1){
+      $('tParent').value = predParent;
+    }
+  }
+});
+
+$('templateHead').addEventListener('click', () => $('templatePanel').classList.toggle('collapsed'));
+$('tLevel').addEventListener('change', actualizarSelectores);
+$('tParent').addEventListener('change', actualizarSelectores);
+
+$('taskForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const name = $('tName').value.trim();
+  const level = Number($('tLevel').value);
+  const parentId = $('tParent').value;
+  const isMilestone = $('tMilestone').checked;
+  let start = $('tStart').value;
+  let end = $('tEnd').value;
+  const progress = clamp(Number($('tProg').value) || 0, 0, 100);
+  const color = $('tColor').value;
+  const predVal = $('tPred').value;
+  const predecessors = predVal ? [predVal] : [];
+
+  if (!name) return;
+
+  if (level === 3 || level === 4){
+    if (!start || !end){ alert('Las actividades y paquetes requieren fechas.'); return; }
+    if (isMilestone) end = start;
+    else if (end < start){ alert('La fecha de fin no puede ser anterior al inicio.'); return; }
+  } else {
+    if (!start || !end){ start = fmtDate(new Date()); end = start; }
+  }
+
+  const targetId = state.draftId || state.editingId;
+  if (targetId){
+    const t = state.tasks.find(x => x.id === targetId);
+    if (!t){ resetForm(); return; }
+    const oldParent = t.parentId || '';
+    t.name = name;
+    t.level = level;
+    if (parentId !== oldParent){
+      t.parentId = parentId;
+      const sibs = state.tasks.filter(x => x.id !== t.id && (x.parentId || '') === parentId);
+      t.order = sibs.reduce((m,x) => Math.max(m, x.order ?? 0), -1) + 1;
+    }
+    t.start = start;
+    t.end = end;
+    t.progress = progress;
+    t.color = color;
+    t.predecessors = predecessors;
+    t.isMilestone = isMilestone;
+    t.isDraft = false;
+    state.tasks.filter(x => (x.parentId || '') === oldParent)
+      .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
+      .forEach((x, i) => { x.order = i; });
+    if (predVal) placeTaskAfterPredecessor(t.id, predVal);
+    state.draftId = null;
+    state.editingId = null;
+    resetForm();
+  } else {
+    const sibs = state.tasks.filter(x => (x.parentId || '') === parentId);
+    const order = sibs.reduce((m,x) => Math.max(m, x.order ?? 0), -1) + 1;
+    const newTask = normalize({
+      name, level, parentId, start, end,
+      progress, color, predecessors, isMilestone, order
+    });
+    state.tasks.push(newTask);
+    if (predVal) placeTaskAfterPredecessor(newTask.id, predVal);
+    resetForm();
+    $('tName').focus();
+  }
+  save(); render(); renderTemplate();
+});
+
+/* ==================== Timeline back/forward ==================== */
+$('btnTimelineBack').addEventListener('click', () => {
+  const scroll = $('scroll');
+  scroll.scrollLeft = Math.max(0, scroll.scrollLeft - scroll.clientWidth * 0.6);
+});
+$('btnTimelineForward').addEventListener('click', () => {
+  const scroll = $('scroll');
+  scroll.scrollLeft = scroll.scrollLeft + scroll.clientWidth * 0.6;
+});
+
+$('togglePanelsBtn').addEventListener('click', () => {
+  state.panelsCollapsed = !state.panelsCollapsed;
+  $('fixedPanels').classList.toggle('collapsed', state.panelsCollapsed);
+  $('togglePanelsBtn').textContent = state.panelsCollapsed ? '▲ Mostrar paneles' : '▼ Ocultar paneles';
+});
+
+$('zoomIn').addEventListener('click', () => {
+  state.zoomLevel = clamp(state.zoomLevel + 1, 0, ZOOM_LEVELS.length - 1);
+  render();
+});
+$('zoomOut').addEventListener('click', () => {
+  state.zoomLevel = clamp(state.zoomLevel - 1, 0, ZOOM_LEVELS.length - 1);
+  render();
+});
+$('btnToday').addEventListener('click', scrollToToday);
+
+/* ==================== Importar ==================== */
+$('importFile').addEventListener('change', async ev => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const fname = file.name.toLowerCase();
+  try {
+    if (fname.endsWith('.xlsx')) await importXLSX(file);
+    else if (fname.endsWith('.json')) await importJSON(file);
+    else alert('Formato no soportado. Use .json o .xlsx');
+  } finally {
+    ev.target.value = '';
+  }
+});
+
+async function importJSON(file){
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const arr = JSON.parse(reader.result);
+        if (!Array.isArray(arr)) throw new Error('Formato inválido');
+        state.tasks = arr.filter(validTask).map(normalize);
+        ensureOrders(state.tasks);
+        state.editingId = null;
+        state.addingToId = null;
+        state.draftId = null;
+        state.collapsed.clear();
+        resetForm();
+        save(); render(); renderTemplate();
+      } catch(err){ alert('No se pudo importar JSON: ' + err.message); }
+      resolve();
+    };
+    reader.readAsText(file);
+  });
+}
+
+async function importXLSX(file){
+  if (!window.ExcelJS){ alert('ExcelJS no está disponible.'); return; }
+  try {
+    const wb = new ExcelJS.Workbook();
+    const buffer = await file.arrayBuffer();
+    await wb.xlsx.load(buffer);
+    const ws = wb.worksheets[0];
+    if (!ws) throw new Error('El archivo no tiene hojas');
+
+    const cellToDate = (val) => {
+      if (val === null || val === undefined || val === '') return '';
+      if (val instanceof Date) return fmtDate(val);
+      const s = String(val).trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)){
+        const [dd, mm, yy] = s.split('/');
+        return `${yy}-${mm}-${dd}`;
+      }
+      return '';
+    };
+
+    const projRow = ws.getRow(3);
+    const projLevelCell = String(projRow.getCell(2).value || '').trim();
+    const projNameCell = String(projRow.getCell(3).value || '').trim();
+    const projEdtCell = String(projRow.getCell(1).value || '').trim();
+
+    if (!/^1(\.|$)/.test(projEdtCell) || !/proyecto/i.test(projLevelCell)){
+      throw new Error('El archivo no parece haber sido generado por este Generador de Gantt (falta la fila de Proyecto en la fila 3).');
+    }
+
+    let bpip = '';
+    const bpipMatch = projLevelCell.match(/BPIP[:\s]*(\d{6})/i);
+    if (bpipMatch) bpip = bpipMatch[1];
+
+    const projectName = projNameCell;
+    const levelMap = { 'Fase': 1, 'Etapa': 2, 'Paquete': 3, 'Actividad': 4 };
+    const newTasks = [];
+    const edtToId = new Map();
+    edtToId.set('1', '__root__');
+
+    const lastRow = ws.rowCount;
+    for (let r = 4; r <= lastRow; r++){
+      const row = ws.getRow(r);
+      const edtVal = String(row.getCell(1).value || '').trim();
+      if (!edtVal) continue;
+      if (edtVal === 'Leyenda:' || edtVal.startsWith('Métricas')) break;
+
+      const levelStr = String(row.getCell(2).value || '').trim();
+      if (!levelMap[levelStr]) continue;
+
+      let name = String(row.getCell(3).value || '').trim();
+      if (!name) continue;
+
+      let isMilestone = false;
+      if (/^\[HITO\]\s*/i.test(name)){
+        isMilestone = true;
+        name = name.replace(/^\[HITO\]\s*/i, '').trim();
+      }
+
+      const start = cellToDate(row.getCell(5).value);
+      const end = cellToDate(row.getCell(6).value);
+
+      let progress = 0;
+      const pv = row.getCell(7).value;
+      if (typeof pv === 'number') progress = Math.round(pv * 100);
+      else if (typeof pv === 'string'){
+        const m = pv.match(/(-?\d+(?:[.,]\d+)?)/);
+        if (m){
+          const v = parseFloat(m[1].replace(',', '.'));
+          progress = pv.includes('%') ? Math.round(v) : Math.round(v * 100);
+        }
+      }
+      progress = clamp(progress, 0, 100);
+
+      const level = levelMap[levelStr];
+      const taskId = uid();
+      edtToId.set(edtVal, taskId);
+
+      newTasks.push(normalize({
+        id: taskId,
+        name, level,
+        parentId: '',
+        start: start || fmtDate(new Date()),
+        end: end || start || fmtDate(new Date()),
+        progress,
+        color: LEVEL_COLORS[level] || AYA.azul,
+        predecessors: [],
+        isMilestone,
+        order: newTasks.length
+      }));
+    }
+
+    if (newTasks.length === 0) throw new Error('No se encontraron tareas en el archivo.');
+
+    newTasks.forEach(t => {
+      let code = '';
+      for (const [c, id] of edtToId.entries()){
+        if (id === t.id){ code = c; break; }
+      }
+      if (!code) return;
+      const parts = code.split('.');
+      if (parts.length <= 2){
+        t.parentId = '';
+      } else {
+        const parentCode = parts.slice(0, -1).join('.');
+        const parentId = edtToId.get(parentCode);
+        if (parentId && parentId !== '__root__') t.parentId = parentId;
+      }
+    });
+
+    state.projectName = projectName;
+    state.projectBpip = bpip;
+    state.tasks = newTasks;
+    state.editingId = null;
+    state.addingToId = null;
+    state.draftId = null;
+    state.collapsed.clear();
+    ensureOrders(state.tasks);
+
+    $('projName').value = state.projectName;
+    $('projBpip').value = state.projectBpip;
+    state.projectInfoLocked = canLockProjectInfo();
+    applyProjectInfoState();
+    updateProjectLabel();
+    resetForm();
+    save();
+    render();
+    renderTemplate();
+
+    alert(`Importación XLSX exitosa: ${newTasks.length} elementos cargados.`);
+  } catch(err){
+    console.error('Error importando XLSX:', err);
+    alert('Error al importar XLSX: ' + (err.message || err));
+  }
+}
+
+$('btnClear').addEventListener('click', () => {
+  if (!state.tasks.length && !state.projectName.trim() && !state.projectBpip) return;
+  if (confirm('¿Eliminar todo el proyecto?')){
+    state.tasks = [];
+    state.projectName = '';
+    state.projectBpip = '';
+    state.projectInfoLocked = false;
+    state.draftId = null;
+    state.collapsed.clear();
+    $('projName').value = '';
+    $('projBpip').value = '';
+    applyProjectInfoState();
+    updateProjectLabel();
+    resetForm();
+    save(); render(); renderTemplate();
+  }
+});
+
+$('btnExportXls').addEventListener('click', exportarXLSX);
+
+/* ============================================================
+   EXPORTACIÓN XLSX — CORREGIDA
+   - Validación obligatoria del BPIP (6 dígitos exactos)
+   - Sin fallback silencioso a "000000"
+   - BPIP del nombre de archivo === BPIP de la celda B3
+   - Persistencia y sincronización explícitas
+============================================================ */
+async function exportarXLSX(){
+  /* --- 1. SINCRONIZACIÓN DESDE EL FORMULARIO (fuente de verdad) --- */
+  const bpipInput = $('projBpip');
+  const nameInput = $('projName');
+
+  const rawBpip   = (bpipInput ? bpipInput.value : '') || '';
+  const cleanBpip = String(rawBpip).replace(/\D/g, '').slice(0, 6); // solo dígitos, conserva ceros iniciales
+  const cleanName = ((nameInput ? nameInput.value : '') || '').trim();
+
+  // Actualizar el estado y persistir a localStorage ANTES de cualquier validación
+  state.projectBpip = cleanBpip;
+  state.projectName = cleanName;
+  try {
+    localStorage.setItem(KEY + '_projectBpip', state.projectBpip);
+    localStorage.setItem(KEY + '_projectName', state.projectName);
+  } catch(e){ /* ignorar */ }
+
+  /* --- 2. VALIDACIÓN OBLIGATORIA DEL BPIP --- */
+  if (cleanBpip.length !== 6){
+    const motivo = cleanBpip.length === 0
+      ? 'El código BPIP está vacío.'
+      : `El código BPIP tiene ${cleanBpip.length} dígito(s) y debe tener exactamente 6.`;
+    alert(
+      '⚠️ No se puede exportar el cronograma\n\n' +
+      motivo + '\n\n' +
+      'Código actual: "' + (cleanBpip || '(vacío)') + '"\n\n' +
+      'Por favor, ingrese un código BPIP válido de 6 dígitos (ej. 002551) en el campo "Código BPIP" antes de exportar.'
+    );
+    if (bpipInput){
+      state.projectInfoLocked = false;
+      applyProjectInfoState();
+      bpipInput.focus();
+      bpipInput.select();
+    }
+    return; // ← cancelar exportación
+  }
+
+  /* --- 3. VALIDACIÓN DE DATOS Y LIBRERÍA --- */
+  if (!state.tasks.length){ alert('No hay datos para exportar.'); return; }
+  const ExcelJS = window.ExcelJS;
+  if (!ExcelJS){ alert('ExcelJS no está disponible.'); return; }
+
+  /* --- 4. CÓDIGO BPIP DEFINITIVO (ya validado, sin fallback) --- */
+  const bpipForExport = state.projectBpip;                       // exactamente 6 dígitos
+  const nameForExport = state.projectName || 'Proyecto sin nombre';
+
+  /* --- 5. PREPARACIÓN DEL LIBRO (sin cambios en cronograma) --- */
+  state.tasks = computeRollupDates(state.tasks);
+  const tree = buildTree(state.tasks);
+  const flat = flattenVisible(tree, new Set());
+  const edtMap = computeEDTMap(tree);
+  const getProgress = buildProgressCache();
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Gantt MIDEPLAN', { views: [{ state:'frozen', xSplit:7, ySplit:2 }] });
+
+  const allDates = state.tasks.flatMap(t => [t.start, t.end]).filter(Boolean);
+  let min = parseDate(allDates.reduce((a,b) => a < b ? a : b));
+  let max = parseDate(allDates.reduce((a,b) => a > b ? a : b));
+  let start = addDays(min, -2); start = addDays(start, -((start.getDay() + 6) % 7));
+  let end = addDays(max, 5);  end  = addDays(end, 6 - ((end.getDay() + 6) % 7));
+  const totalDays = diffDays(start, end) + 1;
+
+  const fixedCols = [
+    { header:'EDT', key:'edt', width:12 },
+    { header:'Nivel', key:'level', width:22 },
+    { header:'Nombre', key:'name', width:42 },
+    { header:'Peso', key:'weight', width:8 },
+    { header:'Inicio', key:'start', width:12 },
+    { header:'Fin', key:'end', width:12 },
+    { header:'Progreso', key:'progress', width:10 }
+  ];
+
+  const AZUL = 'FF1B294E';
+  const AZUL_MEDIO = 'FF3A4A70';
+  const DORADO = 'FFC9AD6E';
+  const DORADO_OSCURO = 'FF8B7338';
+  const DORADO_SUAVE = 'FFFBF3E0';
+  const BLANCO = 'FFFFFFFF';
+  const WEEKEND = 'FFF2F4F8';
+  const HOLIDAY = 'FFFBF3E0';
+
+  const h1 = ws.getRow(1), h2 = ws.getRow(2);
+  fixedCols.forEach((c, i) => {
+    const cell = h1.getCell(i + 1);
+    cell.value = c.header;
+    cell.font = { bold:true, color:{ argb: BLANCO }, size:11 };
+    cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: AZUL } };
+    cell.alignment = { vertical:'middle', horizontal:'center' };
+    cell.border = { bottom:{ style:'thin', color:{ argb: DORADO } } };
+    ws.getColumn(i + 1).width = c.width;
+    ws.mergeCells(1, i + 1, 2, i + 1);
+  });
+
+  const dayStartCol = fixedCols.length + 1;
+  let dayCol = dayStartCol, i = 0;
+  while (i < totalDays){
+    const d = addDays(start, i);
+    const y = d.getFullYear(), m = d.getMonth();
+    let count = 0;
+    while (i + count < totalDays){
+      const dd = addDays(start, i + count);
+      if (dd.getMonth() !== m || dd.getFullYear() !== y) break;
+      count++;
+    }
+    const cell = h1.getCell(dayCol);
+    cell.value = MESES[m] + ' ' + y;
+    cell.font = { bold:true, color:{ argb: AZUL }, size:10 };
+    cell.alignment = { horizontal:'center', vertical:'middle' };
+    cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: DORADO_SUAVE } };
+    if (count > 1) ws.mergeCells(1, dayCol, 1, dayCol + count - 1);
+    for (let k = 0; k < count; k++){
+      const dc = addDays(start, i + k);
+      const iso = fmtDate(dc);
+      const dow = dc.getDay();
+      const dayCell = h2.getCell(dayCol + k);
+      dayCell.value = dc.getDate();
+      dayCell.font = { size:8, color:{ argb: AZUL_MEDIO } };
+      dayCell.alignment = { horizontal:'center', vertical:'middle' };
+      let bg = BLANCO;
+      if (HOLIDAY_SET.has(iso)) bg = HOLIDAY;
+      else if (dow === 0 || dow === 6) bg = WEEKEND;
+      dayCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: bg } };
+      dayCell.border = { left:{ style:'thin', color:{ argb: 'FFE4E7F0' } } };
+      ws.getColumn(dayCol + k).width = 3;
+    }
+    dayCol += count; i += count;
+  }
+
+  /* --- 6. FILA DEL PROYECTO — usa bpipForExport (mismo valor que el nombre del archivo) --- */
+  const projRowNum = 3;
+  const projRow = ws.getRow(projRowNum);
+  projRow.getCell(1).value = '1';
+  projRow.getCell(1).font = { bold:true, size:11, color:{ argb: BLANCO } };
+  projRow.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{ argb: AZUL } };
+  projRow.getCell(1).alignment = { horizontal:'center', vertical:'middle' };
+
+  projRow.getCell(2).value = `Proyecto · BPIP:${bpipForExport}`;
+  projRow.getCell(2).font = { bold:true, size:10, color:{ argb: BLANCO } };
+  projRow.getCell(2).fill = { type:'pattern', pattern:'solid', fgColor:{ argb: AZUL } };
+  projRow.getCell(2).alignment = { horizontal:'center', vertical:'middle' };
+
+  projRow.getCell(3).value = nameForExport;
+  projRow.getCell(3).font = { bold:true, size:12, color:{ argb: BLANCO } };
+  projRow.getCell(3).fill = { type:'pattern', pattern:'solid', fgColor:{ argb: AZUL } };
+
+  projRow.getCell(4).value = '—';
+  projRow.getCell(5).value = allDates.reduce((a,b) => a < b ? a : b);
+  projRow.getCell(6).value = allDates.reduce((a,b) => a > b ? a : b);
+  projRow.getCell(7).value = calcOverallProgress() / 100;
+  projRow.getCell(7).numFmt = '0%';
+  [4,5,6,7].forEach(c => {
+    projRow.getCell(c).fill = { type:'pattern', pattern:'solid', fgColor:{ argb: AZUL } };
+    projRow.getCell(c).font = { bold:true, size:10, color:{ argb: BLANCO } };
+    projRow.getCell(c).alignment = { horizontal:'center', vertical:'middle' };
+  });
+
+  const projStart = parseDate(allDates.reduce((a,b) => a < b ? a : b));
+  const projEnd = parseDate(allDates.reduce((a,b) => a > b ? a : b));
+  const projOffset = diffDays(start, projStart);
+  const projDur = diffDays(projStart, projEnd) + 1;
+  for (let d = 0; d < projDur; d++){
+    const col = dayStartCol + projOffset + d;
+    if (col < dayStartCol || col >= dayStartCol + totalDays) continue;
+    projRow.getCell(col).fill = { type:'pattern', pattern:'solid', fgColor:{ argb: AZUL } };
+  }
+  projRow.height = 20;
+
+  flat.forEach(({task, depth}, idx) => {
+    const rowNumber = idx + 4;
+    const row = ws.getRow(rowNumber);
+
+    row.getCell(1).value = edtMap.get(task.id) || '';
+    row.getCell(1).font = { bold:true, size:9, color:{ argb: DORADO_OSCURO } };
+    row.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{ argb: DORADO_SUAVE } };
+    row.getCell(1).alignment = { horizontal:'center', vertical:'middle' };
+
+    row.getCell(2).value = LEVEL_NAMES[task.level];
+    row.getCell(2).font = { size:9, color:{ argb: AZUL_MEDIO } };
+    row.getCell(2).alignment = { horizontal:'center', vertical:'middle' };
+
+    const nameCell = row.getCell(3);
+    nameCell.value = '  '.repeat(depth) + (task.isMilestone ? '[HITO] ' : '') + task.name;
+    nameCell.font = {
+      bold: task.level <= 2 || task.isMilestone,
+      size: task.level === 1 ? 12 : task.level === 2 ? 11 : 10,
+      color: { argb: AZUL }
+    };
+    nameCell.alignment = { vertical:'middle' };
+    if (task.isMilestone){
+      nameCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: DORADO } };
+    }
+
+    const weightCell = row.getCell(4);
+    if (task.level === 2){
+      weightCell.value = getWeightForEtapa(task.name);
+      weightCell.font = { bold:true, size:10, color:{ argb: AZUL } };
+      weightCell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: DORADO_SUAVE } };
+    } else {
+      weightCell.value = '—';
+      weightCell.font = { size:10, color:{ argb: AZUL_MEDIO } };
+    }
+    weightCell.alignment = { horizontal:'center', vertical:'middle' };
+
+    row.getCell(5).value = task.start;
+    row.getCell(6).value = task.end;
+    const cp = getProgress(task.id);
+    row.getCell(7).value = cp / 100;
+    row.getCell(7).numFmt = '0%';
+    [5,6,7].forEach(c => {
+      const cell = row.getCell(c);
+      cell.font = { size:10, color:{ argb: AZUL } };
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+    });
+
+    row.eachCell({ includeEmpty:true }, cell => {
+      cell.border = { bottom:{ style:'hair', color:{ argb: 'FFE4E7F0' } } };
+    });
+
+    const s = parseDate(task.start);
+    const e = parseDate(task.end);
+    const offset = diffDays(start, s);
+    const dur = diffDays(s, e) + 1;
+    const argb = task.isMilestone ? DORADO : 'FF' + task.color.replace('#','').toUpperCase();
+
+    for (let d = 0; d < dur; d++){
+      const col = dayStartCol + offset + d;
+      if (col < dayStartCol || col >= dayStartCol + totalDays) continue;
+      const cell = row.getCell(col);
+      cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb } };
+      cell.border = {
+        left:{ style:'thin', color:{ argb: 'FFE4E7F0' } },
+        right:{ style:'thin', color:{ argb: 'FFE4E7F0' } }
+      };
+      if (task.isMilestone){
+        cell.value = 'HITO';
+        cell.font = { color:{ argb: AZUL }, bold:true, size:8 };
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+      }
+    }
+    row.height = 20;
+  });
+
+  const legendRow = ws.getRow(flat.length + 5);
+  legendRow.getCell(1).value = 'Leyenda:';
+  legendRow.getCell(1).font = { bold:true, size:9, color:{ argb: AZUL } };
+  [
+    ['Fase', AZUL, BLANCO], ['Etapa', AZUL_MEDIO, BLANCO],
+    ['Paquete', DORADO, AZUL], ['Actividad', DORADO_OSCURO, BLANCO],
+    ['HITO', DORADO, AZUL]
+  ].forEach((l, i) => {
+    const c = legendRow.getCell(2 + i * 2);
+    c.value = l[0];
+    c.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: l[1] } };
+    c.font = { color:{ argb: l[2] }, size:8, bold:true };
+    c.alignment = { horizontal:'center' };
+  });
+
+  const metRow = ws.getRow(flat.length + 7);
+  metRow.getCell(1).value = 'Métricas MIDEPLAN:';
+  metRow.getCell(1).font = { bold:true, size:10, color:{ argb: AZUL } };
+  metRow.getCell(2).value = 'Avance Global';
+  metRow.getCell(3).value = calcOverallProgress().toFixed(1) + '%';
+  metRow.getCell(4).value = 'SPI';
+  const spiVal = calcSPI();
+  metRow.getCell(5).value = spiVal === null ? 'N/D' : spiVal.toFixed(2);
+  metRow.getCell(6).value = spiLabel(spiVal);
+
+  /* --- 7. NOMBRE DE ARCHIVO — usa el MISMO bpipForExport --- */
+  const now = new Date();
+  const yy = now.getFullYear();
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const filename = `${yy}-${mm}-${dd}-${bpipForExport}-cronograma.xlsx`;
+
+  /* --- 8. DESCARGA --- */
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+  // Log de verificación (visible en consola del navegador)
+  console.info('[Exportación XLSX] Archivo:', filename, '| BPIP en celda B3: BPIP:' + bpipForExport);
+}
+
+/* ==================== Scroll / Init ==================== */
+function scrollToToday(){
+  const line = document.querySelector('.todayline');
+  const scroll = $('scroll');
+  if (!line) return;
+  const x = parseFloat(line.style.left) || 0;
+  scroll.scrollLeft = Math.max(0, x - scroll.clientWidth / 2);
+}
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(render, 180);
+});
+
+(function init(){
+  const saved = load();
+  state.tasks = saved || [];
+  if (!saved){
+    FASE_IDS.forEach(id => addTemplateNode(id));
+  }
+  ensureOrders(state.tasks);
+
+  $('projName').value = state.projectName || '';
+  $('projBpip').value = state.projectBpip || '';
+
+  state.projectInfoLocked = canLockProjectInfo();
+  applyProjectInfoState();
+  updateProjectLabel();
+
+  const today = new Date();
+  $('tStart').value = fmtDate(today);
+  $('tDays').value = 5;
+  $('tEnd').value = fmtDate(getEndDateFromWorkDays(today, 5));
+  $('tColor').value = AYA.azul;
+
+  renderTemplate();
+  actualizarSelectores();
+  updateHint();
+  render();
+})();
+</script>
+</body>
+</html>
