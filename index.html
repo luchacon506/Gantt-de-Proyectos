@@ -545,19 +545,246 @@
     letter-spacing: .3px;
     font-weight: 600;
   }
+
+  /* Datos de línea colapsable */
+  .task-form.collapsed .form-body{ display:none; }
+  .task-form .form-title-row{ cursor:pointer; user-select:none; }
+  .task-form .form-title-row .chv{ transition:transform .2s; font-size:10px; color: var(--aya-gris-texto); margin-left:6px; }
+  .task-form.collapsed .form-title-row .chv{ transform:rotate(-90deg); }
+  .form-body{ display:flex; flex-direction:column; gap:4px; }
+
+  /* Fullscreen button */
+  .btn-fullscreen{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; margin-left:10px; padding:0;
+    border:1px solid rgba(201,173,110,.55); border-radius:8px;
+    background: rgba(255,255,255,.08); color: var(--aya-dorado);
+    cursor:pointer; font-size:16px; line-height:1;
+    transition:.15s; flex-shrink:0;
+  }
+  .btn-fullscreen:hover{ background: var(--aya-dorado); color: var(--aya-azul); border-color: var(--aya-dorado); }
+  .header-right{ display:flex; align-items:center; gap:4px; }
+  body.is-fullscreen .header{ padding:6px 14px; }
+  body.is-fullscreen .fixed-panels{ max-height:50vh; }
+  body.is-fullscreen .footer{ display:none; }
+  /* Modo pantalla completa de respaldo (cuando el navegador/iframe bloquea la API nativa) */
+  body.is-pseudo-fs{ overflow:hidden; }
+  body.is-pseudo-fs .btn-fullscreen{ background: var(--aya-dorado); color: var(--aya-azul); }
+
+  /* Edición en línea de BPIP + nombre del proyecto (fila EDT 1 del Gantt) */
+  .proj-inline-panel{ display:flex; flex-direction:column; gap:4px; width:100%; padding:2px 0 4px; }
+  .proj-inline-panel .pi-row{ display:flex; flex-direction:column; gap:1px; }
+  .proj-inline-panel label{
+    font-size:8px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.3px; color: var(--aya-gris-texto);
+  }
+  .proj-inline-panel input{
+    font-size:12px; font-weight:700; color: var(--aya-azul);
+    border:1px solid var(--aya-dorado); border-radius:4px;
+    padding:3px 6px; width:100%; background:#fff;
+  }
+  .proj-inline-panel input.pi-bpip{
+    width:96px; text-align:center; font-family:'Courier New',monospace; letter-spacing:1.5px;
+  }
+  .proj-inline-panel input.invalid{ border-color: var(--aya-peligro); background:#fff4f4; }
+  .proj-inline-panel .pi-err{ font-size:9px; color: var(--aya-peligro); font-weight:700; min-height:0; }
+  .proj-inline-panel .pi-actions{ display:flex; gap:4px; }
+  .proj-inline-panel .pi-actions .btn{ flex:1; font-size:10px; padding:3px 6px; }
+  .gname-title.proj-editable{ cursor:text; }
+  .gname-title.proj-editable:hover, .gname-bpip-line.proj-editable:hover{
+    text-decoration: underline dotted; text-underline-offset:2px;
+  }
+
+  /* Inline edit in Gantt name column */
+  .gname-title.editing-inline, .inline-edit-wrap input{
+    font: inherit; font-size:12px; font-weight:700; color: var(--aya-azul);
+    border:1px solid var(--aya-dorado); border-radius:4px;
+    padding:1px 4px; width:100%; min-width:60px; background:#fff;
+  }
+  .inline-meta{
+    display:flex; flex-wrap:wrap; gap:3px; align-items:center;
+    margin-top:1px; font-size:10px; color: var(--aya-gris-texto);
+  }
+  .inline-meta input[type=date], .inline-meta input[type=number]{
+    font-size:10px; padding:1px 3px; border:1px solid var(--aya-borde-fuerte);
+    border-radius:3px; color: var(--aya-azul); background:#fff; max-width:100px;
+  }
+  .inline-meta input[type=number]{ width:42px; text-align:center; }
+  .inline-meta .ilabel{ font-size:8px; font-weight:700; text-transform:uppercase; color: var(--aya-gris-suave); }
+  .btn-inline-save, .btn-inline-cancel{
+    width:18px; height:18px; padding:0; border-radius:3px; border:1px solid var(--aya-borde-fuerte);
+    background:#fff; cursor:pointer; font-size:10px; font-weight:800; color: var(--aya-azul);
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .btn-inline-save:hover{ background: var(--aya-exito); color:#fff; border-color: var(--aya-exito); }
+  .btn-inline-cancel:hover{ background: var(--aya-peligro); color:#fff; border-color: var(--aya-peligro); }
+
+  /* Bar resize handles */
+  .gbar{ overflow: visible; }
+  .gbar .bar-handle{
+    position:absolute; top:0; bottom:0; width:8px; cursor:ew-resize; z-index:2;
+    background: transparent;
+  }
+  .gbar .bar-handle:hover, .gbar .bar-handle.active{ background: rgba(255,255,255,.45); }
+  .gbar .bar-handle.left{ left:-3px; border-radius:5px 0 0 5px; }
+  .gbar .bar-handle.right{ right:-3px; border-radius:0 5px 5px 0; }
+  .gbar.resizing{ outline:2px solid var(--aya-dorado); outline-offset:1px; opacity:.92; }
+  .gbar.milestone .bar-handle{ display:none; }
+
+  /* Color picker popup */
+  .color-popup{
+    position:fixed; z-index:10000; background:#fff;
+    border:1px solid var(--aya-borde-fuerte); border-radius:10px;
+    box-shadow:0 8px 28px rgba(27,41,78,.22); padding:12px 14px;
+    min-width:200px;
+  }
+  .color-popup h4{ margin:0 0 8px; font-size:11px; color: var(--aya-azul); text-transform:uppercase; letter-spacing:.4px; }
+  .color-popup .swatches{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .color-popup .swatch{
+    width:24px; height:24px; border-radius:6px; cursor:pointer;
+    border:2px solid transparent; box-shadow:0 1px 3px rgba(0,0,0,.15);
+  }
+  .color-popup .swatch:hover, .color-popup .swatch.active{ border-color: var(--aya-azul); transform:scale(1.08); }
+  .color-popup .custom-row{ display:flex; gap:8px; align-items:center; }
+  .color-popup input[type=color]{ width:40px; height:28px; border:1px solid var(--aya-borde-fuerte); border-radius:6px; padding:1px; cursor:pointer; }
+  .color-popup .btn{ font-size:11px; }
+
+
+  /* Fila expandida para edición inline */
+  .grow.row-expanded{
+    height: auto !important;
+    min-height: 96px;
+    align-items: stretch;
+    background: var(--aya-tinte-dorado) !important;
+    box-shadow: inset 3px 0 0 var(--aya-dorado);
+    z-index: 3;
+  }
+  .grow.row-expanded .gname{
+    align-items: flex-start;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    height: auto;
+    min-height: 96px;
+    background: var(--aya-tinte-dorado);
+  }
+  .grow.row-expanded .gtrack{
+    min-height: 96px;
+  }
+  .grow.row-expanded .gbar{
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .grow.row-expanded .gname-txt{
+    gap: 4px;
+    width: 100%;
+  }
+  .inline-edit-panel{
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    padding: 2px 0 4px;
+  }
+  .inline-edit-panel .inline-name{
+    font-size: 12px; font-weight: 700; color: var(--aya-azul);
+    border: 1px solid var(--aya-dorado); border-radius: 4px;
+    padding: 3px 6px; width: 100%; background: #fff;
+  }
+  .inline-edit-panel .inline-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 6px;
+  }
+  .inline-edit-panel .inline-field{
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  .inline-edit-panel .inline-field label{
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .3px; color: var(--aya-gris-texto);
+  }
+  .inline-edit-panel .inline-field input,
+  .inline-edit-panel .inline-field select{
+    font-size: 11px; padding: 2px 4px;
+    border: 1px solid var(--aya-borde-fuerte); border-radius: 4px;
+    color: var(--aya-azul); background: #fff; width: 100%;
+  }
+  .inline-edit-panel .inline-actions{
+    display: flex; gap: 4px; margin-top: 2px;
+  }
+  .inline-edit-panel .inline-actions .btn{
+    flex: 1; font-size: 10px; padding: 3px 6px;
+  }
+
+  /* Modo dependencia plegable */
+  .dep-mode-wrap{
+    display: flex; flex-direction: column; gap: 1px;
+    min-width: 110px; flex-shrink: 0;
+  }
+  .dep-mode-wrap .dep-mode-head{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 4px; cursor: pointer; user-select: none;
+  }
+  .dep-mode-wrap .dep-mode-head label{
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .4px; color: var(--aya-gris-texto); cursor: pointer;
+  }
+  .dep-mode-wrap .dep-mode-head .chv{
+    font-size: 9px; color: var(--aya-gris-texto); transition: transform .15s;
+  }
+  .dep-mode-wrap.collapsed .dep-mode-body{ display: none; }
+  .dep-mode-wrap.collapsed .dep-mode-head .chv{ transform: rotate(-90deg); }
+  .dep-mode-wrap .dep-mode-summary{
+    font-size: 10px; font-weight: 700; color: var(--aya-azul);
+    background: var(--aya-tinte-dorado); border-radius: 4px;
+    padding: 2px 6px; text-align: center;
+  }
+  .dep-mode-wrap:not(.collapsed) .dep-mode-summary{ display: none; }
+  .dep-mode-wrap.collapsed select{ display: none; }
+  .dep-mode-body select{
+    font-size: 11px; padding: 3px 4px;
+    border: 1px solid var(--aya-borde-fuerte); border-radius: 6px;
+    color: var(--aya-azul); background: #fff; width: 100%;
+  }
+
+
+  .logo-right{
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    margin-left: 10px;
+    flex-shrink: 0;
+  }
+  .header-right{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+
+  .logo-left{
+    height: 44px;
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
 </style>
 </head>
 <body>
 
 <header class="header">
   <div class="header-left">
-    <img src="https://www.aya.go.cr/assets/img/96cb7f83-6325-4ee1-8e4e-fa1e21262be8.png" alt="AYA" class="logo">
+    <img src="data:image/png;base64,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" alt="AyA" class="logo logo-left">
     <div>
       <div class="h-main">UEN Programación y Control</div>
       <div class="h-sub">Instituto Costarricense de Acueductos y Alcantarillados</div>
     </div>
   </div>
-  <div class="h-platform">Generador Gantt de Proyectos</div>
+  <div class="header-right">
+    <div class="h-platform">Generador Gantt de Proyectos</div>
+    <button type="button" class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa">⛶</button>
+  </div>
 </header>
 
 <div class="fixed-panels" id="fixedPanels">
@@ -576,15 +803,16 @@
       <div class="template-body" id="templateBody"></div>
     </div>
 
-    <form id="taskForm" class="panel task-form">
-      <div class="form-title-row">
-        <h3>Datos de línea</h3>
+    <form id="taskForm" class="panel task-form collapsed">
+      <div class="form-title-row" id="taskFormHead">
+        <h3>Datos de línea <span class="chv">▼</span></h3>
         <div class="edit-hint" id="editHint">
           <span id="editContext"></span>
           <button type="button" class="btn" id="btnCancelEdit">Cancelar</button>
         </div>
       </div>
 
+      <div class="form-body" id="taskFormBody">
       <div class="form-row">
         <div class="field" style="width:120px; flex-shrink:0">
           <label for="projBpip">Código BPIP</label>
@@ -602,7 +830,7 @@
         <button type="button" class="btn-edit-proj-group" id="btnEditProjectInfo" title="Editar BPIP y nombre del proyecto">✎</button>
         <div class="field" style="flex:1 1 180px; min-width:160px">
           <label for="tName">Nombre de Línea</label>
-          <input id="tName" type="text" placeholder="Ej. Diseño de planos constructivos" required>
+          <input id="tName" type="text" placeholder="Ej. Diseño de planos constructivos" autocomplete="off">
         </div>
         <div class="field" style="width:90px; flex-shrink:0">
           <label for="tLevel">Nivel</label>
@@ -650,8 +878,24 @@
             <option value="">— Ninguna —</option>
           </select>
         </div>
+        <div class="dep-mode-wrap collapsed" id="depModeWrap">
+          <div class="dep-mode-head" id="depModeHead">
+            <label>Modo vínculo</label>
+            <span class="chv">▼</span>
+          </div>
+          <div class="dep-mode-summary" id="depModeSummary">FC</div>
+          <div class="dep-mode-body">
+            <select id="tDepType" title="Tipo de dependencia">
+              <option value="FC" selected>FC · Fin → Comienzo</option>
+              <option value="CC">CC · Comienzo → Comienzo</option>
+              <option value="CF">CF · Comienzo → Fin</option>
+              <option value="FF">FF · Fin → Fin</option>
+            </select>
+          </div>
+        </div>
         <button class="btn primary" id="btnSubmit" type="submit" style="margin-left:auto">+ Añadir</button>
       </div>
+      </div><!-- /.form-body -->
     </form>
 
     <div class="panel metrics-row" id="metricsPanel">
@@ -803,6 +1047,70 @@ function nextWorkDay(fromDate){
   while (!isWorkDay(d)) d = addDays(d, 1);
   return d;
 }
+
+/* ==================== Dependencias: tipos FC/CC/CF/FF ==================== */
+const DEP_LABELS = {
+  FC: 'FC · Fin → Comienzo',
+  CC: 'CC · Comienzo → Comienzo',
+  CF: 'CF · Comienzo → Fin',
+  FF: 'FF · Fin → Fin'
+};
+function normalizeDepType(v){
+  const u = String(v || 'FC').toUpperCase();
+  return ['FC','CC','CF','FF'].includes(u) ? u : 'FC';
+}
+/** Calcula start/end del sucesor según tipo de vínculo, conservando días hábiles. */
+function scheduleFromPredecessor(pred, workDays, depType, isMilestone){
+  const type = normalizeDepType(depType);
+  const days = Math.max(1, workDays || 1);
+  const pStart = parseDate(pred.start);
+  const pEnd = parseDate(pred.end);
+  let start, end;
+  if (isMilestone){
+    // Hito: un solo día anclado según el modo
+    if (type === 'FC') start = nextWorkDay(pEnd);
+    else if (type === 'CC') start = pStart;
+    else if (type === 'FF') start = pEnd;
+    else /* CF */ start = pStart;
+    return { start: fmtDate(start), end: fmtDate(start) };
+  }
+  if (type === 'FC'){
+    // Fin predecesora → Comienzo sucesora (día hábil siguiente)
+    start = nextWorkDay(pEnd);
+    end = getEndDateFromWorkDays(start, days);
+  } else if (type === 'CC'){
+    // Comienzo → Comienzo
+    start = pStart;
+    end = getEndDateFromWorkDays(start, days);
+  } else if (type === 'FF'){
+    // Fin → Fin: anclar fin y retroceder duración
+    end = pEnd;
+    start = getStartDateFromWorkDays(end, days);
+  } else {
+    // CF: Comienzo predecesora → Fin sucesora
+    end = pStart;
+    start = getStartDateFromWorkDays(end, days);
+  }
+  if (fmtDate(end) < fmtDate(start)) end = start;
+  return { start: fmtDate(start), end: fmtDate(end) };
+}
+function applyPredecessorSchedule(task, pred, depType){
+  if (!task || !pred) return;
+  const type = normalizeDepType(depType || task.depType);
+  task.depType = type;
+  const workDays = task.isMilestone ? 1 : Math.max(1, countWorkDaysBetween(parseDate(task.start), parseDate(task.end)));
+  const sch = scheduleFromPredecessor(pred, workDays, type, task.isMilestone);
+  task.start = sch.start;
+  task.end = sch.end;
+}
+function updateDepModeSummary(){
+  const sel = $('tDepType');
+  const sum = $('depModeSummary');
+  if (!sel || !sum) return;
+  sum.textContent = normalizeDepType(sel.value);
+}
+
+
 
 /* ==================== Pesos MIDEPLAN ==================== */
 function getWeightForEtapa(name){
@@ -1001,6 +1309,7 @@ const state = {
   projectName: '',
   projectBpip: '',
   projectInfoLocked: false,
+  editingProjectInfo: false,
   zoomLevel: 6,
   editingId: null,
   addingToId: null,
@@ -1025,6 +1334,7 @@ function normalize(t){
     progress: clamp(Number(t.progress) || 0, 0, 100),
     color: /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color : (LEVEL_COLORS[Number(t.level) || 4] || AYA.azul),
     predecessors: Array.isArray(t.predecessors) ? t.predecessors.filter(id => id !== t.id) : [],
+    depType: (['FC','CC','CF','FF'].includes(t.depType) ? t.depType : 'FC'),
     isMilestone,
     isDraft: !!t.isDraft,
     order: Number.isFinite(t.order) ? t.order : undefined
@@ -1323,6 +1633,8 @@ function render(){
   const totalDays = diffDays(start, end) + 1;
   const zoom = ZOOM_LEVELS[state.zoomLevel];
   const dw = zoom.dayW;
+  state._lastDw = dw;
+  state._lastStartISO = fmtDate(start);
   const trackW = totalDays * dw;
   const nameW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--name-w')) || 320;
   const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--row-h')) || 38;
@@ -1422,11 +1734,12 @@ function render(){
     const rowClass = 'grow lvl' + (isProject ? 0 : task.level)
       + (task.isMilestone ? ' milestone' : '')
       + (isDraft ? ' draft' : '')
-      + (state.editingId === task.id ? ' editing' : '');
+      + (state.editingId === task.id ? ' editing row-expanded' : '')
+      + (isProject && state.editingProjectInfo ? ' editing row-expanded' : '');
     const row = mk('div', rowClass);
     row.dataset.id = task.id;
     row.draggable = !isProject && !isDraft;
-    row.title = isProject ? 'Proyecto (EDT 1) · Clic en el toggle para plegar todo'
+    row.title = isProject ? 'Proyecto (EDT 1) · Clic en el nombre o BPIP para editarlos · Clic en el toggle para plegar todo'
       : isDraft ? 'Línea nueva sin confirmar · Complete los datos y pulse "+ Añadir"'
       : 'Clic para editar · Arrastrar para reordenar';
 
@@ -1477,6 +1790,18 @@ function render(){
       datesEl.appendChild(wb);
     }
     txt.append(nameEl, datesEl);
+
+    if (isProject){
+      nameEl.classList.add('proj-editable');
+      nameEl.dataset.editProject = '1';
+      nameEl.title += '\nClic para editar BPIP y nombre';
+      const bl = txt.querySelector('.gname-bpip-line');
+      if (bl){ bl.classList.add('proj-editable'); bl.dataset.editProject = '1'; bl.style.cursor = 'text'; }
+      if (state.editingProjectInfo){
+        txt.innerHTML = '';
+        txt.appendChild(buildProjectInlinePanel());
+      }
+    }
 
     let qaGroup = null;
     if (isProject){
@@ -1534,9 +1859,10 @@ function render(){
       barPositions.set(task.id, { left, width, rowIndex: idx, milestone: false, project: true });
     } else if (task.isMilestone){
       const bar = mk('div','gbar milestone');
+      bar.dataset.taskId = task.id;
       bar.style.left = (offset * dw) + 'px';
       bar.style.width = Math.max(dur * dw - 2, 22) + 'px';
-      bar.title = `Hito: ${task.name}\n${shortDate(task.start)}`;
+      bar.title = `Hito: ${task.name}\n${shortDate(task.start)}\nClic para cambiar color`;
       track.appendChild(bar);
       barPositions.set(task.id, { left: offset*dw, width: Math.max(dur*dw - 2, 22), rowIndex: idx, milestone: true });
     } else {
@@ -1544,13 +1870,17 @@ function render(){
       const width = Math.max(dur * dw - 2, 4);
       const transparentColor = hexToRgba(task.color, 0.22);
       const bar = mk('div','gbar');
+      bar.dataset.taskId = task.id;
       bar.style.left = left + 'px';
       bar.style.width = width + 'px';
       bar.style.background =
         `linear-gradient(to right, ${task.color} 0%, ${task.color} ${computedProgress}%, ` +
         `${transparentColor} ${computedProgress}%, ${transparentColor} 100%)`;
       bar.style.boxShadow = `0 1px 3px rgba(27,41,78,.2), inset 0 0 0 1.5px ${task.color}`;
-      bar.title = `${task.name}\n${shortDate(task.start)} → ${shortDate(task.end)}\nProgreso: ${Math.round(computedProgress)}%`;
+      bar.title = `${task.name}\n${shortDate(task.start)} → ${shortDate(task.end)}\nProgreso: ${Math.round(computedProgress)}%\nClic: color · Arrastre extremos: fechas`;
+      const hL = mk('div','bar-handle left'); hL.dataset.side = 'left'; hL.dataset.taskId = task.id;
+      const hR = mk('div','bar-handle right'); hR.dataset.side = 'right'; hR.dataset.taskId = task.id;
+      bar.append(hL, hR);
       track.appendChild(bar);
       barPositions.set(task.id, { left, width, rowIndex: idx, milestone: false });
     }
@@ -1576,7 +1906,9 @@ function render(){
   svg.style.width = (nameW + trackW) + 'px';
   svg.style.height = body.offsetHeight + 'px';
   gantt.appendChild(svg);
-  dibujarDependencias(rows, barPositions, nameW, rowH, svg);
+  lastDepArgs = { rows, positions: barPositions, nameW, rowH };
+  redrawDependencies();
+  observeGanttLayout(body);
 
   scroll.scrollLeft = firstRender ? 0 : prevScroll;
   if (firstRender){ firstRender = false; scrollToToday(); }
@@ -1612,37 +1944,123 @@ function updateMetrics(){
   }
 }
 
+/* ==================== Flechas de dependencia ==================== */
+/* Las coordenadas se miden sobre las barras reales del DOM (relativas al contenedor .gantt,
+   donde vive el SVG). Así las flechas siempre van de barra a barra, aunque haya encabezado
+   sticky, filas expandidas por edición en línea, zoom o cambios de tamaño. */
+let lastDepArgs = null;
+let depRaf = 0;
+let ganttResizeObs = null;
+
+function redrawDependencies(){
+  const gantt = $('gantt');
+  const svg = $('depSvg');
+  if (!gantt || !svg || !lastDepArgs) return;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const w = gantt.scrollWidth, h = gantt.scrollHeight;
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.width = w + 'px';
+  svg.style.height = h + 'px';
+  dibujarDependencias(lastDepArgs.rows, lastDepArgs.positions, lastDepArgs.nameW, lastDepArgs.rowH, svg);
+}
+function scheduleDepRedraw(){
+  if (depRaf) return;
+  depRaf = requestAnimationFrame(() => { depRaf = 0; redrawDependencies(); });
+}
+function observeGanttLayout(body){
+  if (typeof ResizeObserver === 'undefined') return;
+  if (!ganttResizeObs) ganttResizeObs = new ResizeObserver(() => scheduleDepRedraw());
+  ganttResizeObs.disconnect();
+  ganttResizeObs.observe(body);
+  body.querySelectorAll('.grow').forEach(r => ganttResizeObs.observe(r));
+}
+window.addEventListener('resize', scheduleDepRedraw);
+document.addEventListener('fullscreenchange', scheduleDepRedraw);
+document.addEventListener('webkitfullscreenchange', scheduleDepRedraw);
+
 function dibujarDependencias(rows, positions, nameW, rowH, svg){
   const ns = 'http://www.w3.org/2000/svg';
   const byId = new Map(rows.map(({task}) => [task.id, task]));
   const strokeColor = 'rgba(27,41,78,.45)';
   const arrowColor  = 'rgba(27,41,78,.65)';
+  const host = svg.parentElement;
+  if (!host) return;
+  const hostRect = host.getBoundingClientRect();
+
+  const anchorOf = (id) => {
+    const rowEl = document.querySelector('.gbody .grow[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+    if (!rowEl) return null;
+    const bar = rowEl.querySelector('.gbar:not(.project-bar)');
+    if (!bar) return null;
+    const r = bar.getBoundingClientRect();
+    if (!r.width && !r.height) return null;
+    return {
+      left:  r.left  - hostRect.left,
+      right: r.right - hostRect.left,
+      y:     r.top + r.height / 2 - hostRect.top
+    };
+  };
+
+  const SIZE = 5, STUB = 12;
   rows.forEach(({task}) => {
     if (!task.predecessors || !task.predecessors.length) return;
-    const target = positions.get(task.id);
+    const target = anchorOf(task.id);
     if (!target) return;
+    const type = normalizeDepType(task.depType);
+    const fromStart = (type === 'CC' || type === 'CF');   // comienzo de la predecesora
+    const toEnd     = (type === 'CF' || type === 'FF');   // fin de la sucesora
     task.predecessors.forEach(predId => {
-      const pred = byId.get(predId);
-      const source = positions.get(predId);
-      if (!pred || !source) return;
-      const x1 = nameW + source.left + source.width;
-      const y1 = source.rowIndex * rowH + rowH / 2;
-      const x2 = nameW + target.left;
-      const y2 = target.rowIndex * rowH + rowH / 2;
-      const midX = Math.max(x1 + 8, x1 + 12);
-      const points = [[x1, y1], [midX, y1], [midX, y2], [x2, y2]];
+      if (!byId.get(predId)) return;
+      const source = anchorOf(predId);
+      if (!source) return;
+
+      const x1 = fromStart ? source.left : source.right;
+      const x2 = toEnd ? target.right : target.left;
+      const y1 = source.y, y2 = target.y;
+      const exitDir  = fromStart ? -1 : 1;   // la línea sale hacia afuera de la barra
+      const entryDir = toEnd ? 1 : -1;       // y entra a la sucesora desde afuera
+
+      let points;
+      const xa = x1 + exitDir * STUB;
+      const xb = x2 + entryDir * STUB;
+      if (exitDir === 1 && entryDir === -1 && xa <= xb){
+        const midX = (x1 + x2) / 2;
+        points = [[x1, y1], [midX, y1], [midX, y2], [x2, y2]];
+      } else {
+        const dir = y2 >= y1 ? 1 : -1;
+        const ym = y1 + dir * (rowH / 2);
+        points = [[x1, y1], [xa, y1], [xa, ym], [xb, ym], [xb, y2], [x2, y2]];
+      }
+
       const poly = document.createElementNS(ns, 'polyline');
-      poly.setAttribute('points', points.map(p => p.join(',')).join(' '));
+      poly.setAttribute('points', points.map(p => p[0] + ',' + p[1]).join(' '));
       poly.setAttribute('fill', 'none');
       poly.setAttribute('stroke', strokeColor);
       poly.setAttribute('stroke-width', '1.5');
       poly.setAttribute('stroke-dasharray', '4 3');
+      poly.setAttribute('data-deptype', type);
       svg.appendChild(poly);
+
+      // Etiqueta del tipo, sobre el tramo vertical central
+      const seg = points.length === 4 ? [points[1], points[2]] : [points[2], points[3]];
+      const label = document.createElementNS(ns, 'text');
+      label.setAttribute('x', (seg[0][0] + seg[1][0]) / 2);
+      label.setAttribute('y', (seg[0][1] + seg[1][1]) / 2 - 3);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', '8');
+      label.setAttribute('font-weight', '700');
+      label.setAttribute('fill', 'rgba(27,41,78,.7)');
+      label.textContent = type;
+      svg.appendChild(label);
+
+      // Punta de flecha: apunta hacia la barra sucesora (hacia la derecha si entra por el
+      // comienzo, hacia la izquierda si entra por el fin)
+      const back = -entryDir * SIZE;   // lado desde donde llega la línea
       const arrow = document.createElementNS(ns, 'polygon');
-      const size = 5;
       arrow.setAttribute('points', [
-        [x2, y2], [x2 - size, y2 - size], [x2 - size, y2 + size]
-      ].map(p => p.join(',')).join(' '));
+        [x2, y2], [x2 + back, y2 - SIZE], [x2 + back, y2 + SIZE]
+      ].map(p => p[0] + ',' + p[1]).join(' '));
       arrow.setAttribute('fill', arrowColor);
       svg.appendChild(arrow);
     });
@@ -1715,6 +2133,10 @@ function actualizarSelectores(){
       predSelect.value = et.predecessors[0];
     } else {
       predSelect.value = '';
+    }
+    if (et && $('tDepType')){
+      $('tDepType').value = normalizeDepType(et.depType);
+      updateDepModeSummary();
     }
   } else {
     if ([...predSelect.options].some(o => o.value === prevVal)) predSelect.value = prevVal;
@@ -1819,6 +2241,7 @@ function startEdit(id){
   discardDraft();
   const t = state.tasks.find(x => x.id === id);
   if (!t) return;
+  if ($('taskForm')) $('taskForm').classList.remove('collapsed');
   state.editingId = id;
   state.addingToId = null;
   $('tName').value = t.name;
@@ -1835,6 +2258,8 @@ function startEdit(id){
   else syncDaysFromDates();
   $('tProg').value = t.progress;
   $('tColor').value = t.color;
+  if ($('tDepType')) $('tDepType').value = normalizeDepType(t.depType);
+  updateDepModeSummary();
   actualizarSelectores();
   $('btnSubmit').textContent = 'Guardar cambios';
   updateHint();
@@ -1846,6 +2271,7 @@ function prefillChildForm(parentId, childLevel){
   discardDraft();
   const parent = state.tasks.find(t => t.id === parentId);
   if (!parent && parentId !== '') return;
+  if ($('taskForm')) $('taskForm').classList.remove('collapsed');
 
   const today = fmtDate(new Date());
 
@@ -1940,6 +2366,8 @@ function resetForm(){
   $('tProg').value = 0;
   $('tColor').value = AYA.azul;
   $('tPred').value = '';
+  if ($('tDepType')) $('tDepType').value = 'FC';
+  updateDepModeSummary();
   $('btnSubmit').textContent = '+ Añadir';
   updateHint();
 }
@@ -2041,16 +2469,45 @@ ganttEl.addEventListener('click', ev => {
     save(); render(); renderTemplate();
     return;
   }
+  // Handles de resize
+  const handle = ev.target.closest('.bar-handle');
+  if (handle){
+    ev.stopPropagation();
+    return; // mousedown handler se encarga
+  }
   const bar = ev.target.closest('.gbar');
+  if (bar && !bar.classList.contains('project-bar')){
+    ev.stopPropagation();
+    const tid = bar.dataset.taskId || (bar.closest('.grow') || {}).dataset.id;
+    if (tid && tid !== '__root__'){
+      openColorPopup(tid, ev.clientX + 8, ev.clientY + 8);
+    }
+    return;
+  }
   const name = ev.target.closest('.gname');
-  if (bar || name){
-    const row = (bar || name).closest('.grow');
-    if (row && row.dataset.id && row.dataset.id !== '__root__') startEdit(row.dataset.id);
+  if (name){
+    if (ev.target.closest('.qa') || ev.target.closest('.del') || ev.target.closest('.toggle-btn')) return;
+    if (ev.target.closest('input') || ev.target.closest('button')) return;
+    const row = name.closest('.grow');
+    if (row && row.dataset.id && row.dataset.id !== '__root__'){
+      beginInlineEdit(row.dataset.id);
+    } else if (row && row.dataset.id === '__root__' && !state.editingProjectInfo){
+      beginProjectInfoEdit(ev.target.closest('.gname-bpip-line') ? 'bpip' : 'name');
+    }
+  }
+});
+
+ganttEl.addEventListener('mousedown', ev => {
+  const handle = ev.target.closest('.bar-handle');
+  if (handle){
+    const tid = handle.dataset.taskId;
+    const side = handle.dataset.side;
+    if (tid && side) onBarHandleDown(ev, tid, side);
   }
 });
 
 ganttEl.addEventListener('dragstart', ev => {
-  if (ev.target.closest('.qa') || ev.target.closest('.del') || ev.target.closest('.gbar') || ev.target.closest('.toggle-btn')){
+  if (ev.target.closest('.qa') || ev.target.closest('.del') || ev.target.closest('.gbar') || ev.target.closest('.toggle-btn') || ev.target.closest('input') || ev.target.closest('.inline-meta') || ev.target.closest('.bar-handle')){
     ev.preventDefault(); return;
   }
   const row = ev.target.closest('.grow');
@@ -2152,6 +2609,81 @@ function unlockProjectInfo(){
   $('projBpip').select();
 }
 
+/* ---- Edición en línea de BPIP + nombre desde la fila del proyecto (EDT 1) ---- */
+function buildProjectInlinePanel(){
+  const panel = document.createElement('div');
+  panel.className = 'proj-inline-panel';
+  panel.innerHTML =
+    '<div class="pi-row"><label>Código BPIP (6 dígitos)</label>' +
+      '<input type="text" class="pi-bpip" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="000000"></div>' +
+    '<div class="pi-row"><label>Nombre del proyecto</label>' +
+      '<input type="text" class="pi-name" autocomplete="off" placeholder="Nombre del proyecto"></div>' +
+    '<div class="pi-err"></div>' +
+    '<div class="pi-actions">' +
+      '<button type="button" class="btn primary pi-save">✓ Guardar</button>' +
+      '<button type="button" class="btn pi-cancel">Cancelar</button>' +
+    '</div>';
+  const bpipInp = panel.querySelector('.pi-bpip');
+  const nameInp = panel.querySelector('.pi-name');
+  const err = panel.querySelector('.pi-err');
+  bpipInp.value = state.projectBpip || '';
+  nameInp.value = state.projectName || '';
+
+  bpipInp.addEventListener('input', () => {
+    const v = bpipInp.value.replace(/\D/g, '').slice(0, 6);
+    if (bpipInp.value !== v) bpipInp.value = v;
+    bpipInp.classList.remove('invalid'); err.textContent = '';
+  });
+
+  const save = () => {
+    const bpip = bpipInp.value.replace(/\D/g, '').slice(0, 6);
+    const name = nameInp.value.trim();
+    if (bpip.length !== 0 && bpip.length !== 6){
+      bpipInp.classList.add('invalid');
+      err.textContent = 'El BPIP debe tener exactamente 6 dígitos.';
+      bpipInp.focus();
+      return;
+    }
+    state.projectBpip = bpip;
+    state.projectName = name;
+    try {
+      localStorage.setItem(KEY + '_projectBpip', bpip);
+      localStorage.setItem(KEY + '_projectName', name);
+    } catch(e){}
+    $('projBpip').value = bpip;
+    $('projName').value = name;
+    state.editingProjectInfo = false;
+    updateProjectLabel();
+    if (canLockProjectInfo()) state.projectInfoLocked = true;
+    applyProjectInfoState();
+    render();
+  };
+  const cancel = () => { state.editingProjectInfo = false; render(); };
+
+  panel.querySelector('.pi-save').addEventListener('click', e => { e.stopPropagation(); save(); });
+  panel.querySelector('.pi-cancel').addEventListener('click', e => { e.stopPropagation(); cancel(); });
+  [bpipInp, nameInp].forEach(inp => inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); save(); }
+    if (e.key === 'Escape'){ e.preventDefault(); cancel(); }
+    e.stopPropagation();
+  }));
+  panel.addEventListener('mousedown', e => e.stopPropagation());
+  panel.addEventListener('click', e => e.stopPropagation());
+  return panel;
+}
+
+function beginProjectInfoEdit(focusField){
+  // Cierra cualquier edición de línea abierta
+  if (state.editingId || state.addingToId || state.draftId){
+    state.editingId = null; state.addingToId = null; state.draftId = null;
+    if (typeof resetForm === 'function') resetForm();
+  }
+  state.editingProjectInfo = true;
+  render();
+  const inp = document.querySelector('.proj-inline-panel ' + (focusField === 'name' ? '.pi-name' : '.pi-bpip'));
+  if (inp){ inp.focus(); inp.select(); }
+}
+
 function updateProjectLabel(){
   const projLabel = $('fpProjectLabel');
   if (!projLabel) return;
@@ -2233,21 +2765,20 @@ $('tDays').addEventListener('input', () => {
   if ($('tMilestone').checked){ $('tDays').value = 1; return; }
   syncDatesFromDays();
 });
-$('tPred').addEventListener('change', () => {
+function applyPredToForm(){
   const predId = $('tPred').value;
   if (!predId) return;
   const pred = state.tasks.find(t => t.id === predId);
   if (!pred) return;
   const days = Math.max(1, Number($('tDays').value) || 1);
-  const newStart = nextWorkDay(parseDate(pred.end));
-  $('tStart').value = fmtDate(newStart);
-  if ($('tMilestone').checked){
-    $('tEnd').value = fmtDate(newStart);
-    $('tDays').value = 1;
-  } else {
-    $('tDays').value = days;
-    $('tEnd').value = fmtDate(getEndDateFromWorkDays(newStart, days));
-  }
+  const depType = normalizeDepType($('tDepType') ? $('tDepType').value : 'FC');
+  const isMs = !!$('tMilestone').checked;
+  const sch = scheduleFromPredecessor(pred, days, depType, isMs);
+  $('tStart').value = sch.start;
+  $('tEnd').value = sch.end;
+  if (isMs) $('tDays').value = 1;
+  else $('tDays').value = days;
+  updateDepModeSummary();
   const predParent = pred.parentId || '';
   const nivel = Number($('tLevel').value);
   if (predParent){
@@ -2256,39 +2787,69 @@ $('tPred').addEventListener('change', () => {
       $('tParent').value = predParent;
     }
   }
-});
+}
+$('tPred').addEventListener('change', applyPredToForm);
+if ($('tDepType')){
+  $('tDepType').addEventListener('change', () => {
+    updateDepModeSummary();
+    if ($('tPred').value) applyPredToForm();
+  });
+}
+if ($('depModeHead')){
+  $('depModeHead').addEventListener('click', () => {
+    $('depModeWrap').classList.toggle('collapsed');
+  });
+}
 
 $('templateHead').addEventListener('click', () => $('templatePanel').classList.toggle('collapsed'));
 $('tLevel').addEventListener('change', actualizarSelectores);
 $('tParent').addEventListener('change', actualizarSelectores);
 
-$('taskForm').addEventListener('submit', ev => {
-  ev.preventDefault();
-  const name = $('tName').value.trim();
-  const level = Number($('tLevel').value);
-  const parentId = $('tParent').value;
-  const isMilestone = $('tMilestone').checked;
+function submitTaskForm(){
+  const name = ($('tName').value || '').trim();
+  const level = Number($('tLevel').value) || 4;
+  const parentId = $('tParent').value || '';
+  const isMilestone = !!$('tMilestone').checked;
   let start = $('tStart').value;
   let end = $('tEnd').value;
   const progress = clamp(Number($('tProg').value) || 0, 0, 100);
-  const color = $('tColor').value;
+  const color = $('tColor').value || LEVEL_COLORS[level] || AYA.azul;
   const predVal = $('tPred').value;
   const predecessors = predVal ? [predVal] : [];
+  const depType = normalizeDepType($('tDepType') ? $('tDepType').value : 'FC');
 
-  if (!name) return;
+  if (!name){
+    alert('Ingrese el nombre de la línea.');
+    $('tName').focus();
+    // expand form if collapsed
+    $('taskForm').classList.remove('collapsed');
+    return false;
+  }
 
-  if (level === 3 || level === 4){
-    if (!start || !end){ alert('Las actividades y paquetes requieren fechas.'); return; }
-    if (isMilestone) end = start;
-    else if (end < start){ alert('La fecha de fin no puede ser anterior al inicio.'); return; }
-  } else {
-    if (!start || !end){ start = fmtDate(new Date()); end = start; }
+  if (!start) start = fmtDate(new Date());
+  if (isMilestone) end = start;
+  if (!end) {
+    const days = Math.max(1, Number($('tDays').value) || 5);
+    end = fmtDate(getEndDateFromWorkDays(parseDate(start), days));
+  }
+  if (end < start){ alert('La fecha de fin no puede ser anterior al inicio.'); return false; }
+
+  // Validar padre según nivel
+  if (level > 1 && parentId){
+    const parent = state.tasks.find(t => t.id === parentId);
+    if (parent && parent.level !== level - 1){
+      // padre incorrecto: intentar corregir o limpiar
+      const okParents = state.tasks.filter(t => !t.isDraft && t.level === level - 1);
+      if (okParents.length === 0 && level > 1){
+        // permitir sin padre (se mostrará a nivel raíz)
+      }
+    }
   }
 
   const targetId = state.draftId || state.editingId;
   if (targetId){
     const t = state.tasks.find(x => x.id === targetId);
-    if (!t){ resetForm(); return; }
+    if (!t){ resetForm(); return false; }
     const oldParent = t.parentId || '';
     t.name = name;
     t.level = level;
@@ -2302,8 +2863,10 @@ $('taskForm').addEventListener('submit', ev => {
     t.progress = progress;
     t.color = color;
     t.predecessors = predecessors;
+    t.depType = depType;
     t.isMilestone = isMilestone;
     t.isDraft = false;
+    // Fechas vienen del formulario (ya ajustadas al elegir predecesora/modo)
     state.tasks.filter(x => (x.parentId || '') === oldParent)
       .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
       .forEach((x, i) => { x.order = i; });
@@ -2316,15 +2879,505 @@ $('taskForm').addEventListener('submit', ev => {
     const order = sibs.reduce((m,x) => Math.max(m, x.order ?? 0), -1) + 1;
     const newTask = normalize({
       name, level, parentId, start, end,
-      progress, color, predecessors, isMilestone, order
+      progress, color, predecessors, depType, isMilestone, order
     });
+    if (predVal){
+      const pred = state.tasks.find(x => x.id === predVal);
+      if (pred) applyPredecessorSchedule(newTask, pred, depType);
+    }
     state.tasks.push(newTask);
     if (predVal) placeTaskAfterPredecessor(newTask.id, predVal);
     resetForm();
+    $('taskForm').classList.remove('collapsed');
     $('tName').focus();
   }
   save(); render(); renderTemplate();
+  return true;
+}
+
+$('taskForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  ev.stopPropagation();
+  submitTaskForm();
 });
+$('btnSubmit').addEventListener('click', ev => {
+  // respaldo por si el submit del form no dispara
+  if (ev.target && ev.target.form) return; // dejar que el submit lo maneje
+  ev.preventDefault();
+  submitTaskForm();
+});
+
+
+/* ==================== Pantalla completa ==================== */
+/* Usa la API nativa (con prefijos) y, si el navegador o el iframe la bloquea,
+   cae a un modo de "pantalla completa de ventana" (oculta pie y compacta el encabezado). */
+let pseudoFullscreen = false;
+function nativeFullscreenOn(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+}
+function fullscreenBlocked(){
+  const flags = [document.fullscreenEnabled, document.webkitFullscreenEnabled, document.msFullscreenEnabled]
+    .filter(v => v !== undefined);
+  return flags.length > 0 && !flags.some(Boolean);
+}
+function toggleFullscreen(){
+  const el = document.documentElement;
+  if (nativeFullscreenOn()){
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    try { const p = exit && exit.call(document); if (p && p.catch) p.catch(() => {}); } catch(e){}
+    return;
+  }
+  if (pseudoFullscreen){
+    pseudoFullscreen = false;
+    syncFullscreenUI();
+    return;
+  }
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  const fallback = () => { pseudoFullscreen = true; syncFullscreenUI(); };
+  if (!req || fullscreenBlocked()){ fallback(); return; }
+  try {
+    const p = req.call(el);
+    if (p && p.catch) p.catch(fallback);
+  } catch(e){ fallback(); }
+}
+function syncFullscreenUI(){
+  const on = nativeFullscreenOn() || pseudoFullscreen;
+  if (nativeFullscreenOn()) pseudoFullscreen = false;
+  document.body.classList.toggle('is-fullscreen', on);
+  document.body.classList.toggle('is-pseudo-fs', pseudoFullscreen);
+  const btn = $('btnFullscreen');
+  if (btn){
+    btn.textContent = on ? '✕' : '⛶';
+    btn.title = on ? 'Salir de pantalla completa' : 'Pantalla completa';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+}
+document.addEventListener('fullscreenchange', syncFullscreenUI);
+document.addEventListener('webkitfullscreenchange', syncFullscreenUI);
+document.addEventListener('msfullscreenchange', syncFullscreenUI);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && pseudoFullscreen){
+    pseudoFullscreen = false;
+    syncFullscreenUI();
+  }
+});
+if ($('btnFullscreen')){
+  $('btnFullscreen').addEventListener('click', toggleFullscreen);
+}
+
+/* ==================== Colapsar Datos de línea ==================== */
+if ($('taskFormHead')){
+  $('taskFormHead').addEventListener('click', ev => {
+    if (ev.target.closest('#btnCancelEdit') || ev.target.closest('.edit-hint button')) return;
+    $('taskForm').classList.toggle('collapsed');
+  });
+}
+// Al editar o añadir desde Gantt, expandir el formulario
+const _origStartEdit = typeof startEdit === 'function' ? startEdit : null;
+const _origPrefill = typeof prefillChildForm === 'function' ? prefillChildForm : null;
+
+/* ==================== Cadena de predecesoras / sucesoras ==================== */
+function getSuccessors(taskId){
+  return state.tasks.filter(t => !t.isDraft && Array.isArray(t.predecessors) && t.predecessors.includes(taskId));
+}
+function getDirectPredecessors(task){
+  if (!task || !task.predecessors) return [];
+  return task.predecessors.map(id => state.tasks.find(t => t.id === id)).filter(Boolean);
+}
+function prevWorkDay(date){
+  let d = addDays(date, -1);
+  while (isNonWorkDay(d)) d = addDays(d, -1);
+  return d;
+}
+function cascadeFromTask(taskId, visited){
+  visited = visited || new Set();
+  if (visited.has(taskId)) return;
+  visited.add(taskId);
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  // Reprogramar sucesoras según su tipo de vínculo, conservando días hábiles
+  getSuccessors(taskId).forEach(suc => {
+    const workDays = suc.isMilestone ? 1 : Math.max(1, countWorkDaysBetween(parseDate(suc.start), parseDate(suc.end)));
+    const type = normalizeDepType(suc.depType);
+    const sch = scheduleFromPredecessor(task, workDays, type, suc.isMilestone);
+    // Solo mover si el anclaje del modo exige un cambio
+    if (suc.start !== sch.start || suc.end !== sch.end){
+      suc.start = sch.start;
+      suc.end = sch.end;
+      cascadeFromTask(suc.id, visited);
+    }
+  });
+}
+function cascadeBackward(taskId, visited){
+  visited = visited || new Set();
+  if (visited.has(taskId)) return;
+  visited.add(taskId);
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const type = normalizeDepType(task.depType);
+  getDirectPredecessors(task).forEach(pred => {
+    const workDays = pred.isMilestone ? 1 : Math.max(1, countWorkDaysBetween(parseDate(pred.start), parseDate(pred.end)));
+    let moved = false;
+    if (type === 'FC'){
+      // pred debe terminar antes del inicio de la tarea
+      const maxEnd = prevWorkDay(parseDate(task.start));
+      const maxEndISO = fmtDate(maxEnd);
+      if (pred.end > maxEndISO){
+        if (pred.isMilestone){ pred.start = maxEndISO; pred.end = maxEndISO; }
+        else { pred.end = maxEndISO; pred.start = fmtDate(getStartDateFromWorkDays(maxEnd, workDays)); }
+        moved = true;
+      }
+    } else if (type === 'CC'){
+      // pred.inicio no debería ser posterior al inicio de la tarea (misma ancla)
+      if (pred.start > task.start){
+        const delta = diffDays(parseDate(task.start), parseDate(pred.start));
+        pred.start = task.start;
+        if (pred.isMilestone) pred.end = pred.start;
+        else pred.end = fmtDate(addDays(parseDate(pred.end), -delta));
+        moved = true;
+      }
+    } else if (type === 'FF'){
+      if (pred.end > task.end){
+        const delta = diffDays(parseDate(task.end), parseDate(pred.end));
+        pred.end = task.end;
+        if (pred.isMilestone) pred.start = pred.end;
+        else pred.start = fmtDate(addDays(parseDate(pred.start), -delta));
+        moved = true;
+      }
+    } else if (type === 'CF'){
+      // fin de tarea anclado al comienzo de pred → pred.start no posterior a task.end
+      if (pred.start > task.end){
+        const delta = diffDays(parseDate(task.end), parseDate(pred.start));
+        pred.start = task.end;
+        if (pred.isMilestone) pred.end = pred.start;
+        else pred.end = fmtDate(addDays(parseDate(pred.end), -delta));
+        moved = true;
+      }
+    }
+    if (moved){
+      cascadeBackward(pred.id, visited);
+      cascadeFromTask(pred.id, new Set([taskId]));
+    }
+  });
+}
+function getStartDateFromWorkDays(endDate, workDays){
+  // endDate inclusive; go back workDays-1 more work days
+  let d = endDate;
+  let remaining = Math.max(1, workDays) - 1;
+  while (remaining > 0){
+    d = addDays(d, -1);
+    if (!isNonWorkDay(d)) remaining--;
+  }
+  while (isNonWorkDay(d)) d = addDays(d, -1);
+  return d;
+}
+function applyTaskDates(taskId, newStart, newEnd, cascade){
+  const t = state.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  if (t.isMilestone){
+    t.start = newStart;
+    t.end = newStart;
+  } else {
+    t.start = newStart;
+    t.end = newEnd < newStart ? newStart : newEnd;
+  }
+  if (cascade){
+    cascadeBackward(taskId);
+    cascadeFromTask(taskId);
+  }
+  // rollup parents handled by computeRollupDates on render
+}
+
+/* ==================== Popup de color ==================== */
+let colorPopupEl = null;
+function closeColorPopup(){
+  if (colorPopupEl){ colorPopupEl.remove(); colorPopupEl = null; }
+}
+function openColorPopup(taskId, x, y){
+  closeColorPopup();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task || task.isProject) return;
+  const swatches = [AYA.azul, AYA.dorado, '#3A4A70', '#8B7338', '#27ae60', '#c0392b', '#2980b9', '#8e44ad', '#16a085', '#e67e22'];
+  const pop = document.createElement('div');
+  pop.className = 'color-popup';
+  pop.style.left = Math.min(x, window.innerWidth - 230) + 'px';
+  pop.style.top = Math.min(y, window.innerHeight - 160) + 'px';
+  pop.innerHTML = '<h4>Color de barra</h4><div class="swatches"></div><div class="custom-row"><input type="color" id="popColorCustom"><button type="button" class="btn primary" id="popColorApply">Aplicar</button><button type="button" class="btn" id="popColorClose">Cerrar</button></div>';
+  const sw = pop.querySelector('.swatches');
+  swatches.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'swatch' + (c.toLowerCase() === (task.color||'').toLowerCase() ? ' active' : '');
+    s.style.background = c;
+    s.title = c;
+    s.addEventListener('click', () => {
+      task.color = c;
+      save(); closeColorPopup(); render();
+    });
+    sw.appendChild(s);
+  });
+  const custom = pop.querySelector('#popColorCustom');
+  custom.value = task.color || AYA.azul;
+  pop.querySelector('#popColorApply').addEventListener('click', () => {
+    task.color = custom.value;
+    save(); closeColorPopup(); render();
+  });
+  pop.querySelector('#popColorClose').addEventListener('click', closeColorPopup);
+  document.body.appendChild(pop);
+  colorPopupEl = pop;
+  setTimeout(() => {
+    const closer = (e) => {
+      if (colorPopupEl && !colorPopupEl.contains(e.target) && !e.target.closest('.gbar')){
+        closeColorPopup();
+        document.removeEventListener('mousedown', closer);
+      }
+    };
+    document.addEventListener('mousedown', closer);
+  }, 0);
+}
+
+/* ==================== Resize de barras ==================== */
+let barDrag = null;
+function onBarHandleDown(ev, taskId, side){
+  ev.preventDefault();
+  ev.stopPropagation();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task || task.isMilestone || task.isDraft) return;
+  const scroll = $('scroll');
+  const ganttRect = $('gantt').getBoundingClientRect();
+  const nameW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--name-w')) || 320;
+  const dw = (typeof state !== 'undefined' && ZOOM_LEVELS[state.zoomLevel]) ? ZOOM_LEVELS[state.zoomLevel].dayWidth : 28;
+  // need timeline start from last render - store on state
+  barDrag = {
+    taskId, side,
+    originX: ev.clientX,
+    origStart: task.start,
+    origEnd: task.end,
+    dw: state._lastDw || dw,
+    timelineStart: state._lastStartISO,
+    nameW
+  };
+  document.body.style.cursor = 'ew-resize';
+  const move = (e) => {
+    if (!barDrag) return;
+    const dx = e.clientX - barDrag.originX;
+    const dayDelta = Math.round(dx / barDrag.dw);
+    const t = state.tasks.find(x => x.id === barDrag.taskId);
+    if (!t) return;
+    if (barDrag.side === 'right'){
+      let newEnd = fmtDate(addDays(parseDate(barDrag.origEnd), dayDelta));
+      if (newEnd < t.start) newEnd = t.start;
+      t.end = newEnd;
+    } else {
+      let newStart = fmtDate(addDays(parseDate(barDrag.origStart), dayDelta));
+      if (newStart > t.end) newStart = t.end;
+      t.start = newStart;
+    }
+    // live re-render would be heavy; update bar position approx by full render periodically
+    render();
+  };
+  const up = () => {
+    if (barDrag){
+      const t = state.tasks.find(x => x.id === barDrag.taskId);
+      if (t){
+        cascadeBackward(t.id);
+        cascadeFromTask(t.id);
+        save();
+        render();
+      }
+    }
+    barDrag = null;
+    document.body.style.cursor = '';
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+}
+
+/* ==================== Edición inline en fila ==================== */
+function beginInlineEdit(taskId){
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task || task.isDraft) return;
+  if ($('taskForm')) $('taskForm').classList.remove('collapsed');
+  // Cargar también el formulario lateral
+  state.editingProjectInfo = false;
+  state.editingId = taskId;
+  state.addingToId = null;
+  state.draftId = null;
+  $('tName').value = task.name;
+  $('tLevel').value = String(task.level);
+  actualizarSelectores();
+  $('tParent').value = task.parentId || '';
+  $('tStart').value = task.start;
+  $('tEnd').value = task.end;
+  $('tMilestone').checked = !!task.isMilestone;
+  $('tEnd').disabled = !!task.isMilestone;
+  $('tDays').disabled = !!task.isMilestone;
+  if (task.isMilestone){ $('tDays').value = 1; }
+  else syncDaysFromDates();
+  $('tProg').value = task.progress;
+  $('tColor').value = task.color;
+  if ($('tDepType')) $('tDepType').value = normalizeDepType(task.depType);
+  updateDepModeSummary();
+  if (task.predecessors && task.predecessors[0]){
+    const predSel = $('tPred');
+    if ([...predSel.options].some(o => o.value === task.predecessors[0])) predSel.value = task.predecessors[0];
+  }
+  $('btnSubmit').textContent = 'Guardar cambios';
+  updateHint();
+
+  // Marcar fila expandida y re-render para aplicar altura
+  render();
+
+  const row = document.querySelector('.grow[data-id="'+taskId+'"]');
+  if (!row) return;
+  row.classList.add('row-expanded', 'editing');
+  const txt = row.querySelector('.gname-txt');
+  if (!txt || txt.dataset.inline === '1') return;
+  txt.dataset.inline = '1';
+
+  const workDays = Math.max(1, countWorkDaysBetween(parseDate(task.start), parseDate(task.end)));
+  const predOpts = getPredCandidatesForContext()
+    .filter(t => t.id !== taskId)
+    .sort((a,b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+
+  const panel = document.createElement('div');
+  panel.className = 'inline-edit-panel';
+  panel.innerHTML =
+    '<input type="text" class="inline-name" value="">' +
+    '<div class="inline-grid">' +
+      '<div class="inline-field"><label>Inicio</label><input type="date" class="il-start"></div>' +
+      '<div class="inline-field"><label>Días hábiles</label><input type="number" class="il-days" min="1" step="1"></div>' +
+      '<div class="inline-field"><label>Fin</label><input type="date" class="il-end"></div>' +
+      '<div class="inline-field"><label>Avance %</label><input type="number" class="il-prog" min="0" max="100" step="5"></div>' +
+      '<div class="inline-field" style="grid-column:1/-1"><label>Predecesora</label><select class="il-pred"><option value="">— Ninguna —</option></select></div>' +
+      '<div class="inline-field" style="grid-column:1/-1"><label>Modo vínculo</label><select class="il-deptype">' +
+        '<option value="FC">FC · Fin → Comienzo</option>' +
+        '<option value="CC">CC · Comienzo → Comienzo</option>' +
+        '<option value="CF">CF · Comienzo → Fin</option>' +
+        '<option value="FF">FF · Fin → Fin</option>' +
+      '</select></div>' +
+    '</div>' +
+    '<div class="inline-actions">' +
+      '<button type="button" class="btn primary btn-il-save">Guardar</button>' +
+      '<button type="button" class="btn btn-il-cancel">Cancelar</button>' +
+    '</div>';
+
+  const nameInp = panel.querySelector('.inline-name');
+  nameInp.value = task.name;
+  panel.querySelector('.il-start').value = task.start;
+  panel.querySelector('.il-end').value = task.end;
+  panel.querySelector('.il-days').value = task.isMilestone ? 1 : workDays;
+  panel.querySelector('.il-prog').value = Math.round(task.progress);
+  panel.querySelector('.il-deptype').value = normalizeDepType(task.depType);
+  if (task.isMilestone){
+    panel.querySelector('.il-days').disabled = true;
+    panel.querySelector('.il-end').disabled = true;
+  }
+  const predSelect = panel.querySelector('.il-pred');
+  predOpts.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    const lvlTag = t.level === 3 ? '[Paquete] ' : '[Actividad] ';
+    opt.textContent = lvlTag + shortDate(t.start) + ' · ' + t.name;
+    predSelect.appendChild(opt);
+  });
+  if (task.predecessors && task.predecessors[0]) predSelect.value = task.predecessors[0];
+
+  const syncEnd = () => {
+    if (task.isMilestone) return;
+    const s = panel.querySelector('.il-start').value;
+    const days = Math.max(1, Number(panel.querySelector('.il-days').value) || 1);
+    if (s) panel.querySelector('.il-end').value = fmtDate(getEndDateFromWorkDays(parseDate(s), days));
+  };
+  const syncDays = () => {
+    if (task.isMilestone) return;
+    const s = panel.querySelector('.il-start').value;
+    const e = panel.querySelector('.il-end').value;
+    if (s && e) panel.querySelector('.il-days').value = Math.max(1, countWorkDaysBetween(parseDate(s), parseDate(e)));
+  };
+  const applyPredInline = () => {
+    const predId = predSelect.value;
+    if (!predId) return;
+    const pred = state.tasks.find(t => t.id === predId);
+    if (!pred) return;
+    const days = Math.max(1, Number(panel.querySelector('.il-days').value) || 1);
+    const depType = normalizeDepType(panel.querySelector('.il-deptype').value);
+    const sch = scheduleFromPredecessor(pred, days, depType, task.isMilestone);
+    panel.querySelector('.il-start').value = sch.start;
+    panel.querySelector('.il-end').value = sch.end;
+  };
+  panel.querySelector('.il-start').addEventListener('change', () => {
+    if (task.isMilestone) panel.querySelector('.il-end').value = panel.querySelector('.il-start').value;
+    else syncEnd();
+  });
+  panel.querySelector('.il-days').addEventListener('input', syncEnd);
+  panel.querySelector('.il-end').addEventListener('change', syncDays);
+  predSelect.addEventListener('change', applyPredInline);
+  panel.querySelector('.il-deptype').addEventListener('change', () => {
+    if (predSelect.value) applyPredInline();
+  });
+
+  const saveInline = () => {
+    const newName = nameInp.value.trim();
+    if (!newName){ alert('El nombre no puede estar vacío'); return; }
+    let s = panel.querySelector('.il-start').value || task.start;
+    let e = panel.querySelector('.il-end').value || task.end;
+    if (task.isMilestone) e = s;
+    if (e < s){ alert('Fin anterior al inicio'); return; }
+    const prog = clamp(Number(panel.querySelector('.il-prog').value) || 0, 0, 100);
+    const predId = predSelect.value;
+    const depType = normalizeDepType(panel.querySelector('.il-deptype').value);
+    task.name = newName;
+    task.start = s;
+    task.end = e;
+    task.progress = prog;
+    task.predecessors = predId ? [predId] : [];
+    task.depType = depType;
+    if (predId){
+      const pred = state.tasks.find(t => t.id === predId);
+      if (pred){
+        const days = Math.max(1, Number(panel.querySelector('.il-days').value) || 1);
+        const sch = scheduleFromPredecessor(pred, days, depType, task.isMilestone);
+        task.start = sch.start;
+        task.end = sch.end;
+        placeTaskAfterPredecessor(task.id, predId);
+      }
+    }
+    cascadeBackward(task.id);
+    cascadeFromTask(task.id);
+    state.editingId = null;
+    resetForm();
+    save(); render(); renderTemplate();
+  };
+  panel.querySelector('.btn-il-save').addEventListener('click', ev => { ev.stopPropagation(); saveInline(); });
+  panel.querySelector('.btn-il-cancel').addEventListener('click', ev => {
+    ev.stopPropagation();
+    state.editingId = null;
+    resetForm();
+    render();
+  });
+  nameInp.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); saveInline(); }
+    if (e.key === 'Escape'){ state.editingId = null; resetForm(); render(); }
+  });
+  panel.addEventListener('mousedown', e => e.stopPropagation());
+  panel.addEventListener('click', e => e.stopPropagation());
+
+  txt.innerHTML = '';
+  txt.appendChild(panel);
+  // Ajustar altura de la fila de barras
+  const track = row.querySelector('.gtrack');
+  if (track){
+    const h = Math.max(panel.offsetHeight + 12, 96);
+    row.style.height = h + 'px';
+    track.style.minHeight = h + 'px';
+  }
+  nameInp.focus();
+  nameInp.select();
+  redrawDependencies();
+}
+
 
 /* ==================== Timeline back/forward ==================== */
 $('btnTimelineBack').addEventListener('click', () => {
