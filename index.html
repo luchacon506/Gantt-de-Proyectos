@@ -3,8 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Generador Gantt de Proyectos</title>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<title>Generador Gantt de Proyectos · Local</title>
+<!-- ExcelJS: primero archivo local (misma carpeta), si no existe usa CDN -->
+<script src="./exceljs.min.js" onerror="console.info('[Gantt] exceljs.min.js local no encontrado; se intentará CDN')"></script>
+<script>
+(function loadExcelJSFallback(){
+  if (window.ExcelJS) return;
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+  s.async = true;
+  s.onerror = function(){ console.warn('[Gantt] No se pudo cargar ExcelJS (ni local ni CDN). Use Exportar CSV.'); };
+  document.head.appendChild(s);
+})();
+</script>
 <style>
   :root{
     --aya-azul: #1B294E;
@@ -769,6 +780,28 @@
     flex-shrink: 0;
   }
 
+  /* Aviso modo local / librerías */
+  .lib-status{
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin: 0 18px 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--aya-borde-fuerte);
+    background: #fff8e6;
+    color: var(--aya-azul);
+  }
+  .lib-status.visible{ display: flex; flex-wrap: wrap; }
+  .lib-status.ok{
+    background: #eafaf1;
+    border-color: #a7e3c0;
+    color: #1e6b3a;
+  }
+  .lib-status .btn{ font-size: 10px; padding: 2px 8px; }
+
 </style>
 </head>
 <body>
@@ -928,7 +961,9 @@
         <button class="btn" id="btnToday" type="button">Hoy</button>
       </div>
       <div class="grp">
-        <button class="btn xls" id="btnExportXls" type="button">Exportar XLSX</button>
+        <button class="btn xls" id="btnExportXls" type="button" title="Exporta cronograma en Excel (.xlsx). Requiere ExcelJS (local o CDN)">Exportar XLSX</button>
+        <button class="btn" id="btnExportCsv" type="button" title="Exporta tabla en CSV (siempre disponible, sin librerías)">Exportar CSV</button>
+        <button class="btn" id="btnExportJson" type="button" title="Exporta el proyecto completo en JSON (backup)">Exportar JSON</button>
         <label class="btn" for="importFile" title="Importar JSON o XLSX">Importar</label>
         <input id="importFile" type="file" accept=".json,.xlsx,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
         <button class="btn danger" id="btnClear" type="button">Vaciar</button>
@@ -937,6 +972,8 @@
 
   </div>
 </div>
+
+<div class="lib-status" id="libStatus" role="status"></div>
 
 <div class="gantt-area">
   <div class="gantt-wrap">
@@ -2238,10 +2275,13 @@ function discardDraft(){
 }
 
 function startEdit(id){
+  // Preferir edición en el Gantt sin abrir el panel lateral
   discardDraft();
   const t = state.tasks.find(x => x.id === id);
   if (!t) return;
-  if ($('taskForm')) $('taskForm').classList.remove('collapsed');
+  if ($('taskForm')) $('taskForm').classList.add('collapsed');
+  beginInlineEdit(id);
+  return;
   state.editingId = id;
   state.addingToId = null;
   $('tName').value = t.name;
@@ -2271,9 +2311,12 @@ function prefillChildForm(parentId, childLevel){
   discardDraft();
   const parent = state.tasks.find(t => t.id === parentId);
   if (!parent && parentId !== '') return;
-  if ($('taskForm')) $('taskForm').classList.remove('collapsed');
+  // No abrir «Datos de línea»: la edición se hace en el Gantt
+  if ($('taskForm')) $('taskForm').classList.add('collapsed');
 
   const today = fmtDate(new Date());
+  const defaultDays = 5;
+  const endDate = fmtDate(getEndDateFromWorkDays(parseDate(today), defaultDays));
 
   let actualParentId = parentId;
   let insertAfterId = null;
@@ -2296,30 +2339,34 @@ function prefillChildForm(parentId, childLevel){
   }
 
   const levelName = LEVEL_NAMES[childLevel] || 'elemento';
-  const draftTask = normalize({
-    name: `(Nueva ${levelName.toLowerCase()})`,
+  // Crear como línea real (no borrador) para poder editarla al instante en el Gantt
+  const newTask = normalize({
+    name: `Nueva ${levelName.toLowerCase()}`,
     level: childLevel,
     parentId: actualParentId,
-    start: today, end: today,
+    start: today,
+    end: endDate,
     progress: 0,
     color: LEVEL_COLORS[childLevel] || AYA.azul,
     predecessors: [],
     isMilestone: false,
-    isDraft: true,
+    isDraft: false,
     order: newOrder
   });
-  state.tasks.push(draftTask);
+  newTask._fromGanttAdd = true; // si cancela la edición en línea sin guardar, se elimina
+  state.tasks.push(newTask);
 
   state.tasks
     .filter(t => (t.parentId || '') === actualParentId)
     .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
     .forEach((t, i) => { t.order = i; });
 
-  state.draftId = draftTask.id;
+  state.draftId = null;
   state.editingId = null;
   state.addingToId = actualParentId;
 
-  $('tName').value = '';
+  // Sincronizar panel lateral (referencia)
+  $('tName').value = newTask.name;
   $('tLevel').value = String(childLevel);
   actualizarSelectores();
   $('tParent').value = actualParentId;
@@ -2334,8 +2381,8 @@ function prefillChildForm(parentId, childLevel){
     }
   }
   $('tStart').value = today;
-  $('tDays').value = 5;
-  syncDatesFromDays();
+  $('tDays').value = defaultDays;
+  $('tEnd').value = endDate;
   $('tMilestone').checked = false;
   $('tEnd').disabled = false;
   $('tDays').disabled = false;
@@ -2343,10 +2390,21 @@ function prefillChildForm(parentId, childLevel){
   $('tColor').value = LEVEL_COLORS[childLevel] || AYA.azul;
   actualizarSelectores();
   $('tPred').value = '';
-  $('btnSubmit').textContent = '+ Añadir';
+  $('btnSubmit').textContent = 'Guardar cambios';
   updateHint();
+  save();
   render();
-  $('tName').focus();
+
+  // Abrir edición en línea en el Gantt (nombre, fechas, avance, predecesora…)
+  beginInlineEdit(newTask.id);
+
+  // Asegurar que la fila quede visible
+  requestAnimationFrame(() => {
+    const row = document.querySelector('.grow[data-id="' + newTask.id + '"]');
+    if (row && typeof row.scrollIntoView === 'function'){
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
 }
 
 function resetForm(){
@@ -3197,34 +3255,44 @@ function onBarHandleDown(ev, taskId, side){
 /* ==================== Edición inline en fila ==================== */
 function beginInlineEdit(taskId){
   const task = state.tasks.find(t => t.id === taskId);
-  if (!task || task.isDraft) return;
-  if ($('taskForm')) $('taskForm').classList.remove('collapsed');
-  // Cargar también el formulario lateral
+  // Permitir editar también líneas recién añadidas (antes se bloqueaban si isDraft)
+  if (!task || task.isProject) return;
+  // No desplegar el panel «Datos de línea»; toda la edición ocurre en el Gantt
+  if ($('taskForm') && !$('taskForm').classList.contains('collapsed')){
+    $('taskForm').classList.add('collapsed');
+  }
   state.editingProjectInfo = false;
   state.editingId = taskId;
-  state.addingToId = null;
-  state.draftId = null;
-  $('tName').value = task.name;
-  $('tLevel').value = String(task.level);
-  actualizarSelectores();
-  $('tParent').value = task.parentId || '';
-  $('tStart').value = task.start;
-  $('tEnd').value = task.end;
-  $('tMilestone').checked = !!task.isMilestone;
-  $('tEnd').disabled = !!task.isMilestone;
-  $('tDays').disabled = !!task.isMilestone;
-  if (task.isMilestone){ $('tDays').value = 1; }
-  else syncDaysFromDates();
-  $('tProg').value = task.progress;
-  $('tColor').value = task.color;
-  if ($('tDepType')) $('tDepType').value = normalizeDepType(task.depType);
-  updateDepModeSummary();
-  if (task.predecessors && task.predecessors[0]){
-    const predSel = $('tPred');
-    if ([...predSel.options].some(o => o.value === task.predecessors[0])) predSel.value = task.predecessors[0];
-  }
-  $('btnSubmit').textContent = 'Guardar cambios';
-  updateHint();
+  state.addingToId = task.parentId || null;
+  // Si era borrador, lo mantenemos editable en Gantt y lo confirmamos al guardar
+  if (state.draftId && state.draftId !== taskId) discardDraft();
+  if (task.isDraft) state.draftId = taskId;
+  else state.draftId = null;
+
+  // Sincronizar estado interno del formulario (sin abrirlo)
+  try {
+    $('tName').value = task.name;
+    $('tLevel').value = String(task.level);
+    actualizarSelectores();
+    $('tParent').value = task.parentId || '';
+    $('tStart').value = task.start;
+    $('tEnd').value = task.end;
+    $('tMilestone').checked = !!task.isMilestone;
+    $('tEnd').disabled = !!task.isMilestone;
+    $('tDays').disabled = !!task.isMilestone;
+    if (task.isMilestone){ $('tDays').value = 1; }
+    else syncDaysFromDates();
+    $('tProg').value = task.progress;
+    $('tColor').value = task.color;
+    if ($('tDepType')) $('tDepType').value = normalizeDepType(task.depType);
+    updateDepModeSummary();
+    if (task.predecessors && task.predecessors[0]){
+      const predSel = $('tPred');
+      if ([...predSel.options].some(o => o.value === task.predecessors[0])) predSel.value = task.predecessors[0];
+    }
+    $('btnSubmit').textContent = 'Guardar cambios';
+    updateHint();
+  } catch(e){}
 
   // Marcar fila expandida y re-render para aplicar altura
   render();
@@ -3236,7 +3304,9 @@ function beginInlineEdit(taskId){
   if (!txt || txt.dataset.inline === '1') return;
   txt.dataset.inline = '1';
 
-  const workDays = Math.max(1, countWorkDaysBetween(parseDate(task.start), parseDate(task.end)));
+  const workDays = Math.max(1, countWorkDaysBetween(parseDate(task.start), parseDate(task.end)) || 5);
+  // Hito solo en Paquete (3) o Actividad (4)
+  const canBeHito = (task.level === 3 || task.level === 4);
   const predOpts = getPredCandidatesForContext()
     .filter(t => t.id !== taskId)
     .sort((a,b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
@@ -3244,12 +3314,18 @@ function beginInlineEdit(taskId){
   const panel = document.createElement('div');
   panel.className = 'inline-edit-panel';
   panel.innerHTML =
-    '<input type="text" class="inline-name" value="">' +
+    '<input type="text" class="inline-name" value="" placeholder="Nombre de la línea">' +
     '<div class="inline-grid">' +
       '<div class="inline-field"><label>Inicio</label><input type="date" class="il-start"></div>' +
       '<div class="inline-field"><label>Días hábiles</label><input type="number" class="il-days" min="1" step="1"></div>' +
       '<div class="inline-field"><label>Fin</label><input type="date" class="il-end"></div>' +
       '<div class="inline-field"><label>Avance %</label><input type="number" class="il-prog" min="0" max="100" step="5"></div>' +
+      '<div class="inline-field" style="grid-column:1/-1">' +
+        '<label class="chk-label" style="padding-top:4px;cursor:pointer">' +
+          '<input type="checkbox" class="il-milestone"' + (canBeHito ? '' : ' disabled') + '> Es hito' +
+        '</label>' +
+        (canBeHito ? '' : '<span style="font-size:9px;color:var(--aya-gris-texto)">Solo en Paquete o Actividad</span>') +
+      '</div>' +
       '<div class="inline-field" style="grid-column:1/-1"><label>Predecesora</label><select class="il-pred"><option value="">— Ninguna —</option></select></div>' +
       '<div class="inline-field" style="grid-column:1/-1"><label>Modo vínculo</label><select class="il-deptype">' +
         '<option value="FC">FC · Fin → Comienzo</option>' +
@@ -3264,16 +3340,26 @@ function beginInlineEdit(taskId){
     '</div>';
 
   const nameInp = panel.querySelector('.inline-name');
+  const msChk = panel.querySelector('.il-milestone');
   nameInp.value = task.name;
   panel.querySelector('.il-start').value = task.start;
   panel.querySelector('.il-end').value = task.end;
   panel.querySelector('.il-days').value = task.isMilestone ? 1 : workDays;
   panel.querySelector('.il-prog').value = Math.round(task.progress);
   panel.querySelector('.il-deptype').value = normalizeDepType(task.depType);
-  if (task.isMilestone){
-    panel.querySelector('.il-days').disabled = true;
-    panel.querySelector('.il-end').disabled = true;
-  }
+  msChk.checked = !!(task.isMilestone && canBeHito);
+
+  const applyMilestoneUI = () => {
+    const on = !!msChk.checked;
+    panel.querySelector('.il-days').disabled = on;
+    panel.querySelector('.il-end').disabled = on;
+    if (on){
+      panel.querySelector('.il-days').value = 1;
+      panel.querySelector('.il-end').value = panel.querySelector('.il-start').value;
+    }
+  };
+  applyMilestoneUI();
+
   const predSelect = panel.querySelector('.il-pred');
   predOpts.forEach(t => {
     const opt = document.createElement('option');
@@ -3284,14 +3370,16 @@ function beginInlineEdit(taskId){
   });
   if (task.predecessors && task.predecessors[0]) predSelect.value = task.predecessors[0];
 
+  const isMsNow = () => !!msChk.checked;
+
   const syncEnd = () => {
-    if (task.isMilestone) return;
+    if (isMsNow()) return;
     const s = panel.querySelector('.il-start').value;
     const days = Math.max(1, Number(panel.querySelector('.il-days').value) || 1);
     if (s) panel.querySelector('.il-end').value = fmtDate(getEndDateFromWorkDays(parseDate(s), days));
   };
   const syncDays = () => {
-    if (task.isMilestone) return;
+    if (isMsNow()) return;
     const s = panel.querySelector('.il-start').value;
     const e = panel.querySelector('.il-end').value;
     if (s && e) panel.querySelector('.il-days').value = Math.max(1, countWorkDaysBetween(parseDate(s), parseDate(e)));
@@ -3303,12 +3391,17 @@ function beginInlineEdit(taskId){
     if (!pred) return;
     const days = Math.max(1, Number(panel.querySelector('.il-days').value) || 1);
     const depType = normalizeDepType(panel.querySelector('.il-deptype').value);
-    const sch = scheduleFromPredecessor(pred, days, depType, task.isMilestone);
+    const sch = scheduleFromPredecessor(pred, days, depType, isMsNow());
     panel.querySelector('.il-start').value = sch.start;
     panel.querySelector('.il-end').value = sch.end;
+    if (isMsNow()) panel.querySelector('.il-days').value = 1;
   };
+  msChk.addEventListener('change', () => {
+    applyMilestoneUI();
+    if (!isMsNow()) syncEnd();
+  });
   panel.querySelector('.il-start').addEventListener('change', () => {
-    if (task.isMilestone) panel.querySelector('.il-end').value = panel.querySelector('.il-start').value;
+    if (isMsNow()) panel.querySelector('.il-end').value = panel.querySelector('.il-start').value;
     else syncEnd();
   });
   panel.querySelector('.il-days').addEventListener('input', syncEnd);
@@ -3318,12 +3411,42 @@ function beginInlineEdit(taskId){
     if (predSelect.value) applyPredInline();
   });
 
+  const cancelInline = () => {
+    const id = task.id;
+    const wasNew = !!task._fromGanttAdd || !!task.isDraft;
+    state.editingId = null;
+    state.draftId = null;
+    state.addingToId = null;
+    // Línea nueva desde botones del Gantt: al cancelar sin guardar se elimina
+    if (wasNew){
+      state.tasks = state.tasks.filter(t => t.id !== id);
+      state.collapsed.delete(id);
+    }
+    try {
+      $('tName').value = '';
+      $('tLevel').value = '4';
+      $('tPred').value = '';
+      $('tMilestone').checked = false;
+      if ($('tDepType')) $('tDepType').value = 'FC';
+      updateDepModeSummary();
+      $('btnSubmit').textContent = '+ Añadir';
+      updateHint();
+      actualizarSelectores();
+    } catch(e){}
+    // Mantener el panel de Datos de línea colapsado
+    if ($('taskForm')) $('taskForm').classList.add('collapsed');
+    save();
+    render();
+    renderTemplate();
+  };
+
   const saveInline = () => {
     const newName = nameInp.value.trim();
-    if (!newName){ alert('El nombre no puede estar vacío'); return; }
+    if (!newName){ alert('El nombre no puede estar vacío'); nameInp.focus(); return; }
+    const asMilestone = canBeHito && isMsNow();
     let s = panel.querySelector('.il-start').value || task.start;
     let e = panel.querySelector('.il-end').value || task.end;
-    if (task.isMilestone) e = s;
+    if (asMilestone) e = s;
     if (e < s){ alert('Fin anterior al inicio'); return; }
     const prog = clamp(Number(panel.querySelector('.il-prog').value) || 0, 0, 100);
     const predId = predSelect.value;
@@ -3334,11 +3457,14 @@ function beginInlineEdit(taskId){
     task.progress = prog;
     task.predecessors = predId ? [predId] : [];
     task.depType = depType;
+    task.isMilestone = asMilestone;
+    task.isDraft = false;
+    delete task._fromGanttAdd;
     if (predId){
       const pred = state.tasks.find(t => t.id === predId);
       if (pred){
-        const days = Math.max(1, Number(panel.querySelector('.il-days').value) || 1);
-        const sch = scheduleFromPredecessor(pred, days, depType, task.isMilestone);
+        const days = asMilestone ? 1 : Math.max(1, Number(panel.querySelector('.il-days').value) || 1);
+        const sch = scheduleFromPredecessor(pred, days, depType, asMilestone);
         task.start = sch.start;
         task.end = sch.end;
         placeTaskAfterPredecessor(task.id, predId);
@@ -3347,19 +3473,20 @@ function beginInlineEdit(taskId){
     cascadeBackward(task.id);
     cascadeFromTask(task.id);
     state.editingId = null;
-    resetForm();
+    state.draftId = null;
+    state.addingToId = null;
+    if (typeof resetForm === 'function') resetForm();
+    if ($('taskForm')) $('taskForm').classList.add('collapsed');
     save(); render(); renderTemplate();
   };
   panel.querySelector('.btn-il-save').addEventListener('click', ev => { ev.stopPropagation(); saveInline(); });
   panel.querySelector('.btn-il-cancel').addEventListener('click', ev => {
     ev.stopPropagation();
-    state.editingId = null;
-    resetForm();
-    render();
+    cancelInline();
   });
   nameInp.addEventListener('keydown', e => {
     if (e.key === 'Enter'){ e.preventDefault(); saveInline(); }
-    if (e.key === 'Escape'){ state.editingId = null; resetForm(); render(); }
+    if (e.key === 'Escape'){ e.preventDefault(); cancelInline(); }
   });
   panel.addEventListener('mousedown', e => e.stopPropagation());
   panel.addEventListener('click', e => e.stopPropagation());
@@ -3424,8 +3551,23 @@ async function importJSON(file){
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const arr = JSON.parse(reader.result);
-        if (!Array.isArray(arr)) throw new Error('Formato inválido');
+        const data = JSON.parse(reader.result);
+        let arr = null;
+        if (Array.isArray(data)){
+          arr = data;
+        } else if (data && Array.isArray(data.tasks)){
+          // Formato backup del Exportar JSON (con metadatos de proyecto)
+          if (typeof data.projectName === 'string') state.projectName = data.projectName;
+          if (typeof data.projectBpip === 'string') state.projectBpip = String(data.projectBpip).replace(/\D/g,'').slice(0,6);
+          arr = data.tasks;
+          if ($('projName')) $('projName').value = state.projectName || '';
+          if ($('projBpip')) $('projBpip').value = state.projectBpip || '';
+          state.projectInfoLocked = canLockProjectInfo();
+          applyProjectInfoState();
+          updateProjectLabel();
+        } else {
+          throw new Error('Formato inválido (se espera un arreglo de tareas o un objeto { tasks, projectName, projectBpip })');
+        }
         state.tasks = arr.filter(validTask).map(normalize);
         ensureOrders(state.tasks);
         state.editingId = null;
@@ -3434,6 +3576,7 @@ async function importJSON(file){
         state.collapsed.clear();
         resetForm();
         save(); render(); renderTemplate();
+        alert('Importación JSON exitosa: ' + state.tasks.length + ' elementos cargados.');
       } catch(err){ alert('No se pudo importar JSON: ' + err.message); }
       resolve();
     };
@@ -3442,7 +3585,17 @@ async function importJSON(file){
 }
 
 async function importXLSX(file){
-  if (!window.ExcelJS){ alert('ExcelJS no está disponible.'); return; }
+  if (!window.ExcelJS){
+    alert(
+      'ExcelJS no está disponible; no se puede importar XLSX.\n\n' +
+      'Opciones:\n' +
+      '• Abra este HTML con internet (carga el CDN), o\n' +
+      '• Coloque exceljs.min.js en la misma carpeta, o\n' +
+      '• Use un archivo JSON (Exportar JSON / Importar).'
+    );
+    updateLibStatus();
+    return;
+  }
   try {
     const wb = new ExcelJS.Workbook();
     const buffer = await file.arrayBuffer();
@@ -3596,6 +3749,181 @@ $('btnClear').addEventListener('click', () => {
 });
 
 $('btnExportXls').addEventListener('click', exportarXLSX);
+if ($('btnExportCsv')) $('btnExportCsv').addEventListener('click', exportarCSV);
+if ($('btnExportJson')) $('btnExportJson').addEventListener('click', exportarJSON);
+
+/* ==================== Descarga de archivos (robusta en local) ==================== */
+function downloadBlob(blob, filename){
+  try {
+    if (window.navigator && typeof window.navigator.msSaveOrOpenBlob === 'function'){
+      window.navigator.msSaveOrOpenBlob(blob, filename);
+      return true;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try { URL.revokeObjectURL(url); } catch(e){}
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 2500);
+    return true;
+  } catch (err){
+    console.error('[Gantt] Error al descargar:', err);
+    alert('No se pudo iniciar la descarga.\n\n' + (err && err.message ? err.message : err));
+    return false;
+  }
+}
+function downloadText(text, filename, mime){
+  const blob = new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8' });
+  return downloadBlob(blob, filename);
+}
+function buildExportFilename(ext){
+  const now = new Date();
+  const yy = now.getFullYear();
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const bpip = (state.projectBpip || '').replace(/\D/g, '').slice(0, 6) || '000000';
+  return `${yy}-${mm}-${dd}-${bpip}-cronograma.${ext}`;
+}
+function syncProjectFromForm(){
+  const bpipInput = $('projBpip');
+  const nameInput = $('projName');
+  const rawBpip   = (bpipInput ? bpipInput.value : '') || '';
+  const cleanBpip = String(rawBpip).replace(/\D/g, '').slice(0, 6);
+  const cleanName = ((nameInput ? nameInput.value : '') || '').trim();
+  state.projectBpip = cleanBpip;
+  state.projectName = cleanName;
+  try {
+    localStorage.setItem(KEY + '_projectBpip', state.projectBpip);
+    localStorage.setItem(KEY + '_projectName', state.projectName);
+  } catch(e){}
+  return { cleanBpip, cleanName, bpipInput };
+}
+function requireBpipOrAbort(){
+  const { cleanBpip, bpipInput } = syncProjectFromForm();
+  if (cleanBpip.length === 6) return true;
+  const motivo = cleanBpip.length === 0
+    ? 'El código BPIP está vacío.'
+    : `El código BPIP tiene ${cleanBpip.length} dígito(s) y debe tener exactamente 6.`;
+  alert(
+    '⚠️ No se puede exportar el cronograma\n\n' +
+    motivo + '\n\n' +
+    'Código actual: "' + (cleanBpip || '(vacío)') + '"\n\n' +
+    'Ingrese un código BPIP de 6 dígitos (ej. 002551) antes de exportar.'
+  );
+  if (bpipInput){
+    state.projectInfoLocked = false;
+    applyProjectInfoState();
+    bpipInput.focus();
+    bpipInput.select();
+  }
+  return false;
+}
+
+/* ==================== Exportar CSV (siempre disponible) ==================== */
+function exportarCSV(){
+  if (!requireBpipOrAbort()) return;
+  if (!state.tasks.length){ alert('No hay datos para exportar.'); return; }
+
+  state.tasks = computeRollupDates(state.tasks);
+  const tree = buildTree(state.tasks);
+  const flat = flattenVisible(tree, new Set());
+  const edtMap = computeEDTMap(tree);
+  const getProgress = buildProgressCache();
+
+  const esc = (v) => {
+    const s = String(v == null ? '' : v);
+    if (/[",\n\r;]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+
+  const rows = [];
+  rows.push(['EDT','Nivel','Nombre','Peso','Inicio','Fin','Progreso %','Hito','Color','Predecesoras','Modo vínculo'].map(esc).join(';'));
+
+  // Fila proyecto
+  const allDates = state.tasks.flatMap(t => [t.start, t.end]).filter(Boolean);
+  const pStart = allDates.length ? allDates.reduce((a,b) => a < b ? a : b) : '';
+  const pEnd = allDates.length ? allDates.reduce((a,b) => a > b ? a : b) : '';
+  rows.push([
+    '1',
+    'Proyecto · BPIP:' + state.projectBpip,
+    state.projectName || 'Proyecto sin nombre',
+    '—',
+    pStart, pEnd,
+    calcOverallProgress().toFixed(1),
+    '', '', '', ''
+  ].map(esc).join(';'));
+
+  flat.forEach(({task, depth}) => {
+    const pred = (task.predecessors || []).join(',');
+    rows.push([
+      edtMap.get(task.id) || '',
+      LEVEL_NAMES[task.level] || task.level,
+      ('  '.repeat(depth)) + task.name,
+      task.level === 2 ? getWeightForEtapa(task.name) : '—',
+      task.start, task.end,
+      (getProgress(task.id) || 0).toFixed(1),
+      task.isMilestone ? 'Sí' : '',
+      task.color || '',
+      pred,
+      normalizeDepType(task.depType)
+    ].map(esc).join(';'));
+  });
+
+  // BOM UTF-8 para que Excel abra bien acentos
+  const csv = '\uFEFF' + rows.join('\r\n');
+  const filename = buildExportFilename('csv');
+  if (downloadText(csv, filename, 'text/csv')){
+    console.info('[Exportación CSV]', filename);
+  }
+}
+
+/* ==================== Exportar JSON (backup completo) ==================== */
+function exportarJSON(){
+  syncProjectFromForm();
+  if (!state.tasks.length && !state.projectName && !state.projectBpip){
+    alert('No hay datos para exportar.');
+    return;
+  }
+  const payload = {
+    version: 16,
+    exportedAt: new Date().toISOString(),
+    projectName: state.projectName || '',
+    projectBpip: state.projectBpip || '',
+    tasks: state.tasks.filter(t => !t.isDraft).map(t => ({
+      id: t.id, name: t.name, level: t.level, parentId: t.parentId || '',
+      start: t.start, end: t.end, progress: t.progress, color: t.color,
+      predecessors: t.predecessors || [], depType: normalizeDepType(t.depType),
+      isMilestone: !!t.isMilestone, order: t.order
+    }))
+  };
+  const filename = buildExportFilename('json');
+  if (downloadText(JSON.stringify(payload, null, 2), filename, 'application/json')){
+    console.info('[Exportación JSON]', filename);
+  }
+}
+
+function updateLibStatus(){
+  const el = $('libStatus');
+  if (!el) return;
+  const hasXls = !!window.ExcelJS;
+  if (hasXls){
+    el.className = 'lib-status visible ok';
+    el.innerHTML = '✓ ExcelJS disponible · puede exportar XLSX, CSV y JSON.';
+    setTimeout(() => { if (el.classList.contains('ok')) el.classList.remove('visible'); }, 4000);
+  } else {
+    el.className = 'lib-status visible';
+    el.innerHTML =
+      '⚠️ ExcelJS no está cargado. <strong>Exportar XLSX</strong> no estará disponible. ' +
+      'Use <strong>Exportar CSV</strong> o <strong>JSON</strong> (funcionan sin librerías). ' +
+      'Opcional: coloque <code>exceljs.min.js</code> en la misma carpeta que este HTML, o abra con internet para el CDN.';
+  }
+}
 
 /* ============================================================
    EXPORTACIÓN XLSX — CORREGIDA
@@ -3603,48 +3931,25 @@ $('btnExportXls').addEventListener('click', exportarXLSX);
    - Sin fallback silencioso a "000000"
    - BPIP del nombre de archivo === BPIP de la celda B3
    - Persistencia y sincronización explícitas
+   - Si ExcelJS no está, ofrece CSV automáticamente
 ============================================================ */
 async function exportarXLSX(){
-  /* --- 1. SINCRONIZACIÓN DESDE EL FORMULARIO (fuente de verdad) --- */
-  const bpipInput = $('projBpip');
-  const nameInput = $('projName');
-
-  const rawBpip   = (bpipInput ? bpipInput.value : '') || '';
-  const cleanBpip = String(rawBpip).replace(/\D/g, '').slice(0, 6); // solo dígitos, conserva ceros iniciales
-  const cleanName = ((nameInput ? nameInput.value : '') || '').trim();
-
-  // Actualizar el estado y persistir a localStorage ANTES de cualquier validación
-  state.projectBpip = cleanBpip;
-  state.projectName = cleanName;
-  try {
-    localStorage.setItem(KEY + '_projectBpip', state.projectBpip);
-    localStorage.setItem(KEY + '_projectName', state.projectName);
-  } catch(e){ /* ignorar */ }
-
-  /* --- 2. VALIDACIÓN OBLIGATORIA DEL BPIP --- */
-  if (cleanBpip.length !== 6){
-    const motivo = cleanBpip.length === 0
-      ? 'El código BPIP está vacío.'
-      : `El código BPIP tiene ${cleanBpip.length} dígito(s) y debe tener exactamente 6.`;
-    alert(
-      '⚠️ No se puede exportar el cronograma\n\n' +
-      motivo + '\n\n' +
-      'Código actual: "' + (cleanBpip || '(vacío)') + '"\n\n' +
-      'Por favor, ingrese un código BPIP válido de 6 dígitos (ej. 002551) en el campo "Código BPIP" antes de exportar.'
-    );
-    if (bpipInput){
-      state.projectInfoLocked = false;
-      applyProjectInfoState();
-      bpipInput.focus();
-      bpipInput.select();
-    }
-    return; // ← cancelar exportación
-  }
+  /* --- 1–2. Sincronizar formulario + validar BPIP --- */
+  if (!requireBpipOrAbort()) return;
 
   /* --- 3. VALIDACIÓN DE DATOS Y LIBRERÍA --- */
   if (!state.tasks.length){ alert('No hay datos para exportar.'); return; }
   const ExcelJS = window.ExcelJS;
-  if (!ExcelJS){ alert('ExcelJS no está disponible.'); return; }
+  if (!ExcelJS){
+    const usarCsv = confirm(
+      'ExcelJS no está disponible (sin internet o sin exceljs.min.js local).\n\n' +
+      '¿Exportar en CSV en su lugar?\n\n' +
+      'CSV se abre bien en Excel y no necesita librerías.'
+    );
+    if (usarCsv) exportarCSV();
+    updateLibStatus();
+    return;
+  }
 
   /* --- 4. CÓDIGO BPIP DEFINITIVO (ya validado, sin fallback) --- */
   const bpipForExport = state.projectBpip;                       // exactamente 6 dígitos
@@ -3873,22 +4178,14 @@ async function exportarXLSX(){
   metRow.getCell(6).value = spiLabel(spiVal);
 
   /* --- 7. NOMBRE DE ARCHIVO — usa el MISMO bpipForExport --- */
-  const now = new Date();
-  const yy = now.getFullYear();
-  const mm = String(now.getMonth()+1).padStart(2,'0');
-  const dd = String(now.getDate()).padStart(2,'0');
-  const filename = `${yy}-${mm}-${dd}-${bpipForExport}-cronograma.xlsx`;
+  const filename = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}-${bpipForExport}-cronograma.xlsx`;
 
-  /* --- 8. DESCARGA --- */
+  /* --- 8. DESCARGA (helper robusto para file:// y navegadores) --- */
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-
-  // Log de verificación (visible en consola del navegador)
-  console.info('[Exportación XLSX] Archivo:', filename, '| BPIP en celda B3: BPIP:' + bpipForExport);
+  if (downloadBlob(blob, filename)){
+    console.info('[Exportación XLSX] Archivo:', filename, '| BPIP en celda B3: BPIP:' + bpipForExport);
+  }
 }
 
 /* ==================== Scroll / Init ==================== */
@@ -3930,6 +4227,17 @@ window.addEventListener('resize', () => {
   actualizarSelectores();
   updateHint();
   render();
+
+  // Comprobar ExcelJS (puede llegar un poco después por el CDN asíncrono)
+  updateLibStatus();
+  let checks = 0;
+  const poll = setInterval(() => {
+    checks++;
+    if (window.ExcelJS || checks >= 8){
+      clearInterval(poll);
+      updateLibStatus();
+    }
+  }, 500);
 })();
 </script>
 </body>
